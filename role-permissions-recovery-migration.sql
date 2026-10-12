@@ -208,7 +208,7 @@ begin
   end if;
   if chosen_username is null or recovery_code is null
     or chosen_username !~* '^[a-z0-9_-]{3,32}$'
-    or recovery_code !~ '^[0-9]{6} then return false; end if;
+    or recovery_code !~ '^[0-9]{6}$' then return false; end if;
   select r.id,r.user_id,t.token_hash,t.expires_at,t.attempts,r.reviewed_by
     into reset_id,target_id,stored_token_hash,expiry,tries,approving_owner
     from ss_private.password_reset_requests r
