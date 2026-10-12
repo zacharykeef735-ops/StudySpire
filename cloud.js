@@ -64,7 +64,7 @@ function showGate(kind='login'){
    const password=$('ssc-pass').value;
    if(authMethod==='username'){
      const chosen_username=$('ssc-user').value.trim().toLowerCase();
-     if(!/^[a-z0-9_-]{3,32}$/.test(chosen_username)||/^(admin|owner|moderator|support|staff|official)$/.test(chosen_username))return cloudNotice('Choose a username using 3–32 letters, numbers, _ or -.');
+     if(!/^[a-z0-9_-]{3,32}$/.test(chosen_username)||/^(owner|moderator|support|staff|official)$/.test(chosen_username))return cloudNotice('Choose a username using 3–32 letters, numbers, _ or -.');
      if(password.length<10||new TextEncoder().encode(password).length>72)return cloudNotice('Use a password of at least 10 characters and no more than 72 bytes.');
      // Registration is explicit; browser confirm dialogs can be blocked by embedded browsers.
      const createButton=$('ssc-register');createButton.disabled=true;cloudNotice('Creating your username account…');
@@ -75,7 +75,7 @@ function showGate(kind='login'){
    }
    const row=$('ssc-nameRow');if(row.hidden){row.hidden=false;$('ssc-register').textContent='Finish registration';cloudNotice('Choose a username, then press Finish registration.');return}
    const username=$('ssc-name').value.trim().toLowerCase(),email=$('ssc-email').value.trim();
-   if(!/^[a-z0-9_-]{3,32}$/.test(username)||/^(admin|owner|moderator|support|staff|official)$/.test(username))return cloudNotice('Choose a username using 3–32 letters, numbers, _ or -.');
+   if(!/^[a-z0-9_-]{3,32}$/.test(username)||/^(owner|moderator|support|staff|official)$/.test(username))return cloudNotice('Choose a username using 3–32 letters, numbers, _ or -.');
    if(password.length<8)return cloudNotice('Choose a password at least 8 characters long.');
    cloudNotice('Creating older-style account…');const {data,error}=await client.auth.signUp({email,password,options:{data:{username},emailRedirectTo:location.origin+location.pathname}});
    if(error)return cloudNotice(error.message);if(data.session){cloudNotice('Account created. Signing in…');await boot()}else cloudNotice('Check your email to confirm the account, then return here and sign in.');

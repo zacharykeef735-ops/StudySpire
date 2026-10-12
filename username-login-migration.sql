@@ -12,7 +12,7 @@ create extension if not exists pgcrypto;
 create schema if not exists ss_private;
 revoke all on schema ss_private from public, anon, authenticated;
 
--- Password hashes and browser-session mappings are NEVER readable by browsers.
+-- During beta, the username 'admin' may be claimed, but never grants any privileges by itself.\n-- All new accounts are students until an Owner explicitly changes their role.\n-- Password hashes and browser-session mappings are NEVER readable by browsers.
 create table if not exists ss_private.username_credentials (
   user_id uuid primary key references public.ss_profiles(id) on delete cascade,
   password_hash text not null,
@@ -40,7 +40,7 @@ begin
   if new.is_anonymous then return new; end if;
   chosen := lower(trim(coalesce(new.raw_user_meta_data->>'username','')));
   if chosen !~ '^[a-z0-9_-]{3,32}$'
-    or chosen in ('admin','owner','moderator','staff','support','official') then
+    or chosen in ('owner','moderator','staff','support','official') then
     raise exception 'Choose a valid username (3–32 letters, numbers, _ or -).';
   end if;
   insert into public.ss_profiles(id,username,role) values(new.id,chosen,'student');
@@ -73,7 +73,7 @@ begin
     raise exception 'Sign out before creating another account';
   end if;
   if name_clean !~ '^[a-z0-9_-]{3,32}$'
-    or name_clean in ('admin','owner','moderator','staff','support','official') then
+    or name_clean in ('owner','moderator','staff','support','official') then
     raise exception 'Username must be 3–32 letters, numbers, _ or -';
   end if;
   if chosen_password is null or char_length(chosen_password)<10

@@ -1038,17 +1038,26 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       try { return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms)})]); }
       finally {clearTimeout(timer)}
     }
+    let cachedWebLLMModule=null;
     async function importWebLLM(){
+      if(cachedWebLLMModule)return cachedWebLLMModule;
       const urls=["https://esm.run/@mlc-ai/web-llm","https://esm.sh/@mlc-ai/web-llm"];
       let lastError;
-      for(const url of urls){
-        try{
-          const mod=await withDeadline(import(url),30000,"Module download timed out");
-          if(typeof mod?.CreateMLCEngine==="function")return mod;
-          throw new Error("The downloaded module has no model loader");
-        }catch(e){lastError=e;setStatus("Model library unavailable from one server; trying backup…","warn")}
+      // First-time CDN requests occasionally fail while caches are still warming.
+      for(let attempt=1;attempt<=2;attempt++){
+        for(const url of urls){
+          try{
+            const mod=await withDeadline(import(url),45000,"Model library download timed out");
+            if(typeof mod?.CreateMLCEngine==="function"){cachedWebLLMModule=mod;return mod;}
+            throw new Error("The downloaded module has no model loader");
+          }catch(e){lastError=e;setStatus("Model library unavailable from one server; trying backup…","warn")}
+        }
+        if(attempt===1){
+          setStatus("First library download failed; retrying automatically (2/2)…","warn");
+          await new Promise(resolve=>setTimeout(resolve,1500));
+        }
       }
-      throw new Error("Could not download the browser AI library from either server. "+(lastError?.message||"Check your connection or blockers."));
+      throw new Error("Could not download the browser AI library after retrying. "+(lastError?.message||"Check your connection or blockers."));
     }
     el("loadLocalModel").addEventListener("click", async function () {
       if (loading) return;
@@ -1094,15 +1103,28 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
           }
         },12000);
         // The engine can take a while compiling shaders even after downloading weights.
-        const engine=await module.CreateMLCEngine(chosenModelId,{
-          initProgressCallback:report=>{
-            const fraction=Number(report?.progress);
-            if(Number.isFinite(fraction)&&fraction>progress){progress=fraction;progressAt=Date.now()}
-            lastReport=String(report?.text||"Loading model…").slice(0,380);
-            const pct=Number.isFinite(fraction)?" ("+Math.round(Math.max(0,Math.min(1,fraction))*100)+"%)":"";
-            setStatus(lastReport+pct,"info");
+        let engine=null;
+        for(let attempt=1;attempt<=2;attempt++){
+          try{
+            engine=await module.CreateMLCEngine(chosenModelId,{
+              initProgressCallback:report=>{
+                const fraction=Number(report?.progress);
+                if(Number.isFinite(fraction)&&fraction>progress){progress=fraction;progressAt=Date.now()}
+                lastReport=String(report?.text||"Loading model…").slice(0,380);
+                const pct=Number.isFinite(fraction)?" ("+Math.round(Math.max(0,Math.min(1,fraction))*100)+"%)":"";
+                setStatus(lastReport+pct,"info");
+              }
+            });
+            break;
+          }catch(loadError){
+            const reason=String(loadError?.message||loadError);
+            // Errors involving unavailable GPU support, model IDs or memory aren't transient.
+            if(attempt===2||/out.of.memory|device.lost|unsupported|not.found|404|invalid.model|shader.validation|allocation.failed/i.test(reason))throw loadError;
+            progress=0;progressAt=Date.now();lastReport="Retrying model download";
+            setStatus("The first model download failed. Retrying automatically (2/2)…","warn");
+            await new Promise(resolve=>setTimeout(resolve,1800));
           }
-        });
+        }
         localEngine=engine;loadedModelId=chosenModelId;
         setConnected(true);
         setStatus(chosenModel.label+" is ready for tutoring and Mini.","good");
