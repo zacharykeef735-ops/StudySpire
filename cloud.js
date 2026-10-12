@@ -127,10 +127,38 @@ async function ensureAnonymous(){
  if(response?.error)throw Error('Starting anonymous sign-in: '+response.error.message);
  if(!response?.data?.session)throw Error('Anonymous sign-in returned no session. Check Supabase Authentication → Anonymous Sign-Ins.');
 }
+let signingOut=false;
 async function signOutCloud(){
- if(sessionMethod==='username')await client.rpc('ss_username_logout').catch(()=>{});
- await client.auth.signOut();person=null;profile=null;
- sessionStorage.removeItem('ss-cloud-display-name');sessionStorage.removeItem('studydoc-active-account');sessionStorage.removeItem('ssCloudApplied');location.reload();
+ if(signingOut||!client)return;
+ signingOut=true;
+ const logoutButtons=[$('ssc-logout'),$('sdAccountLogout')].filter(Boolean);
+ for(const button of logoutButtons){button.disabled=true;button.textContent='Signing out…'}
+ cloudNotice('Signing out of Study Summit…');
+ try{
+  // A PostgREST rpc() builder is Promise-like, not a Promise with .catch().
+  // Session-map cleanup must not block the actual auth sign-out.
+  if(sessionMethod==='username'){
+   try{
+    const {error}=await client.rpc('ss_username_logout');
+    if(error)console.warn('Username session cleanup:',error.message);
+   }catch(error){console.warn('Username session cleanup:',error)}
+  }
+  const {error}=await client.auth.signOut({scope:'local'});
+  if(error)throw error;
+  clearTimeout(syncTimer);
+  live=false;person=null;profile=null;cloudId='';remote=null;
+  sessionStorage.removeItem('ss-cloud-display-name');
+  sessionStorage.removeItem('studydoc-active-account');
+  sessionStorage.removeItem('ssCloudApplied');
+  const staff=$('ssCloudStaffDialog');if(staff)staff.hidden=true;
+  location.reload();
+ }catch(error){
+  cloudNotice('Could not sign out: '+(error?.message||error)+'. Please retry.');
+  console.error('Study Summit cloud sign-out failed:',error);
+ }finally{
+  signingOut=false;
+  for(const button of logoutButtons){button.disabled=false;button.textContent='Sign out'}
+ }
 }
 function showBanned(){const gate=$('ssCloudGate')||showGate();gate.hidden=false;if($('ssc-close'))$('ssc-close').hidden=true;$('ssc-loginArea').hidden=true;$('ssc-bannedArea').hidden=false;$('ssc-logout').parentElement.hidden=false;
  const until=profile.banned_until?'until '+new Date(profile.banned_until).toLocaleString():'permanently';$('ssc-banReason').textContent=`Account @${profile.username} banned ${until}. Reason: ${profile.ban_reason||'Admin decision'}`;cloudNotice('You can still export your own flashcards and saved chats.')}
@@ -140,9 +168,9 @@ function exportMine(kind){const items=remote?.data||studyItems();const result={k
  download('study-summit-'+kind+'-'+Date.now()+'.json',result)}
 async function refreshProfile(){if(!person)return false;const {data,error}=await client.from('ss_profiles').select('id,username,role,banned,banned_until,ban_reason').eq('id',person.id).single();
  if(error){cloudNotice('Account status unavailable: '+error.message);return false}profile=data;role=profile.role||'student';
- try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate?.querySelector('#ssc-bannedArea')&&!gate.hidden){gate.hidden=true;}updateHeader()}return true}
+ try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
-function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log)log.textContent='Sign out';
+function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log){log.textContent='Sign out';log.style.display='inline-flex';log.hidden=false;}
  const owner=role==='owner',staff=owner||role==='admin'||role==='moderator';
  for(const id of ['ssCloudStaffBtn','ssCloudOwnerTop','ssCloudOwnerNav','ssCloudOwnerQuick']){const btn=$(id);if(!btn)continue;btn.hidden=!staff;if(id!=='ssCloudOwnerNav'&&id!=='ssCloudOwnerQuick')btn.textContent=owner?'👑 Owner Dashboard':'⚑ Staff Dashboard';if(id==='ssCloudOwnerNav'){const name=btn.querySelector('.sd-navtext');if(name)name.textContent=owner?'👑 Owner Dashboard':'⚑ Staff Dashboard'}}
  if(!staff&&$('ssCloudStaffDialog'))$('ssCloudStaffDialog').hidden=true;
@@ -166,7 +194,7 @@ function installOwnerNavigation(){
 function installButtons(){document.documentElement.classList.add('ss-cloud-active');
  const localShade=$('sdAuthShade');if(localShade)localShade.style.display='none';
  const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate('account');cloudNotice(`Signed in as @${profile?.username||'…'}. Sign out below to switch accounts.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
- const logout=$('sdAccountLogout');if(logout)logout.onclick=signOutCloud;
+ const logout=$('sdAccountLogout');if(logout){logout.style.display='inline-flex';logout.hidden=false;logout.onclick=signOutCloud;}
  const actions=document.querySelector('.sd-profile-actions')||document.querySelector('.sd-profile-side')||document.body;
  if(!$('ssCloudAccountBtn')){const button=document.createElement('button');button.id='ssCloudAccountBtn';button.type='button';button.className='btn secondary small';button.textContent='☁ Cloud account';button.onclick=()=>open?.click();actions.append(button)}
  if(!$('ssCloudImportBtn')){const button=document.createElement('button');button.id='ssCloudImportBtn';button.type='button';button.className='btn secondary small';button.textContent='Import old backup';button.onclick=importLegacy;actions.append(button)}
