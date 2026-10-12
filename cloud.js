@@ -1,4 +1,4 @@
-/* Study Summit Cloud bridge v3.75. Requires cloud-config.js, Supabase JS v2 and supabase.sql.
+/* Study Summit Cloud bridge v3.77. Requires cloud-config.js, Supabase JS v2, supabase.sql, and username-login-migration.sql for no-email accounts.
    No service_role keys; authorization for roles/bans is always checked by SQL on the server. */
 (()=>{'use strict';
 const cfg=window.STUDY_SUMMIT_CLOUD||{};
@@ -24,36 +24,96 @@ function setStudy(items){syncing=true;try{if(!items||typeof items!=='object'||Ar
         localStorage.setItem(localKey(k),v);
     }
   }finally{syncing=false}}
+/* Username accounts are the primary option. Legacy Supabase email accounts are
+   still supported, including existing Owners, until migrated intentionally. */
+let authMethod='username',sessionMethod='email';
 function showGate(kind='login'){
  let gate=$('ssCloudGate');if(!gate){gate=document.createElement('section');gate.id='ssCloudGate';document.body.append(gate)}
- gate.hidden=false;gate.innerHTML=`<div class="ssc-shell"><div class="ssc-mark">✦</div><div class="ssc-heading">Study Summit <span>Cloud</span></div><p id="ssCloudNotice" class="ssc-muted">Your study space, on any device.</p>
- <div id="ssc-loginArea"><label for="ssc-email">Email address</label><input type="email" id="ssc-email" autocomplete="email" placeholder="you@example.com" maxlength="150"/>
- <label for="ssc-pass">Password</label><input id="ssc-pass" type="password" autocomplete="current-password" placeholder="At least 8 characters" minlength="8"/>
- <div id="ssc-nameRow" hidden><label for="ssc-name">Username</label><input id="ssc-name" placeholder="Choose a username" maxlength="32" autocomplete="username"/></div>
- <div class="ssc-row"><button id="ssc-login" type="button">Sign in</button><button id="ssc-register" type="button" class="ssc-light">Create account</button></div>
- <p class="ssc-caption">Your old browser-only accounts are separate. You can import study backups after signing into Cloud.</p></div>
+ gate.hidden=false;gate.innerHTML=`<div class="ssc-shell"><div class="ssc-mark">✦</div><div class="ssc-heading">Study Summit <span>Cloud</span></div>
+ <p id="ssCloudNotice" class="ssc-muted" role="status" aria-live="polite">Your study space, on any device.</p>
+ <div id="ssc-loginArea">
+  <div class="ssc-methods" role="group" aria-label="Sign-in method"><button type="button" id="ssc-usernameMethod" class="ssc-method">Username + password</button><button type="button" id="ssc-emailMethod" class="ssc-method ssc-light">Older email account</button></div>
+  <div id="ssc-userRow"><label for="ssc-user">Username</label><input id="ssc-user" autocomplete="username" placeholder="Your username" maxlength="32" spellcheck="false" autocapitalize="none"/></div>
+  <div id="ssc-emailRow" hidden><label for="ssc-email">Email address</label><input type="email" id="ssc-email" autocomplete="email" placeholder="you@example.com" maxlength="150"/></div>
+  <label for="ssc-pass">Password</label><input id="ssc-pass" type="password" autocomplete="current-password" placeholder="At least 10 characters for new accounts" minlength="8"/>
+  <div id="ssc-nameRow" hidden><label for="ssc-name">Username for older email account</label><input id="ssc-name" placeholder="Choose a username" maxlength="32" autocomplete="username"/></div>
+  <div class="ssc-row"><button id="ssc-login" type="button">Sign in</button><button id="ssc-register" type="button" class="ssc-light">Create account</button></div>
+  <p id="ssc-recoveryInfo" class="ssc-caption">No email needed for new username accounts. Save your password: self-service password recovery isn't available yet. Owner-assisted recovery is not implemented.</p>
+  <p class="ssc-caption">Older Supabase email/Owner accounts remain available via “Older email account.” Browser-only accounts are separate.</p>
+ </div>
  <div id="ssc-bannedArea" hidden><h1 class="ssc-banned">YOU ARE BANNED</h1><p id="ssc-banReason" class="ssc-muted"></p>
  <div class="ssc-row"><button id="ssc-flash" type="button">Export flashcards</button><button id="ssc-chats" type="button" class="ssc-light">Export saved chats</button></div>
  <div class="ssc-row"><button id="ssc-all" type="button" class="ssc-light">Export all study data</button><button id="ssc-check" type="button" class="ssc-light">Check ban status</button></div>
  <p class="ssc-caption">Downloads are available for the account owner. A ban doesn't delete your notes.</p></div>
  <div class="ssc-row"><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
- $('ssc-register').onclick=async()=>{
-  const row=$('ssc-nameRow');if(row.hidden){row.hidden=false;$('ssc-register').textContent='Finish registration';cloudNotice('Choose a username, then press Finish registration.');return}
-  const username=$('ssc-name').value.trim().toLowerCase(),email=$('ssc-email').value.trim(),password=$('ssc-pass').value;
-  if(!/^[a-z0-9_-]{3,32}$/.test(username)||/^(admin|owner|moderator|support|staff|official)$/.test(username))return cloudNotice('Choose a username using 3–32 letters, numbers, _ or -.');
-  if(password.length<8)return cloudNotice('Choose a password at least 8 characters long.');
-  cloudNotice('Creating your account…');const {data,error}=await client.auth.signUp({email,password,options:{data:{username},emailRedirectTo:location.origin+location.pathname}});
-  if(error)return cloudNotice(error.message);if(data.session){cloudNotice('Account created. Signing in…');await boot()}else cloudNotice('Check your email to confirm the account, then return here and sign in.');
+ const setMethod=(method)=>{
+   authMethod=method;const email=method==='email';
+   $('ssc-userRow').hidden=email;$('ssc-emailRow').hidden=!email;
+   $('ssc-nameRow').hidden=true;$('ssc-register').textContent='Create account';
+   $('ssc-usernameMethod').classList.toggle('ssc-selected',!email);
+   $('ssc-emailMethod').classList.toggle('ssc-selected',email);
+   $('ssc-recoveryInfo').textContent=email?'Older email accounts use Supabase email/password. New registrations may require confirmation depending on your Supabase settings.':'No email needed. Use a strong password and keep it safe; password recovery is not available yet.';
+   $('ssc-pass').value='';
  };
- $('ssc-login').onclick=async()=>{const email=$('ssc-email').value.trim(),password=$('ssc-pass').value;if(!email||!password)return cloudNotice('Enter your email and password.');
-   cloudNotice('Signing in…');const {error}=await client.auth.signInWithPassword({email,password});if(error)return cloudNotice(error.message);await boot()};
+ $('ssc-usernameMethod').onclick=()=>setMethod('username');
+ $('ssc-emailMethod').onclick=()=>setMethod('email');
+ $('ssc-register').onclick=async()=>{
+   const password=$('ssc-pass').value;
+   if(authMethod==='username'){
+     const chosen_username=$('ssc-user').value.trim().toLowerCase();
+     if(!/^[a-z0-9_-]{3,32}$/.test(chosen_username)||/^(admin|owner|moderator|support|staff|official)$/.test(chosen_username))return cloudNotice('Choose a username using 3–32 letters, numbers, _ or -.');
+     if(password.length<10||new TextEncoder().encode(password).length>72)return cloudNotice('Use a password of at least 10 characters and no more than 72 bytes.');
+     if(!confirm('Username accounts have no email recovery. Have you saved your password?'))return;
+     cloudNotice('Creating your username account…');
+     try{await ensureAnonymous();const {error}=await client.rpc('ss_username_register',{chosen_username,chosen_password:password});
+       if(error)throw Error(error.message);cloudNotice('Account created. Loading Study Summit…');await boot();
+     }catch(err){cloudNotice('Could not create account: '+(err.message||err)+'. Check that the username SQL migration was run and Anonymous Sign-Ins are enabled.');}
+     return;
+   }
+   const row=$('ssc-nameRow');if(row.hidden){row.hidden=false;$('ssc-register').textContent='Finish registration';cloudNotice('Choose a username, then press Finish registration.');return}
+   const username=$('ssc-name').value.trim().toLowerCase(),email=$('ssc-email').value.trim();
+   if(!/^[a-z0-9_-]{3,32}$/.test(username)||/^(admin|owner|moderator|support|staff|official)$/.test(username))return cloudNotice('Choose a username using 3–32 letters, numbers, _ or -.');
+   if(password.length<8)return cloudNotice('Choose a password at least 8 characters long.');
+   cloudNotice('Creating older-style account…');const {data,error}=await client.auth.signUp({email,password,options:{data:{username},emailRedirectTo:location.origin+location.pathname}});
+   if(error)return cloudNotice(error.message);if(data.session){cloudNotice('Account created. Signing in…');await boot()}else cloudNotice('Check your email to confirm the account, then return here and sign in.');
+ };
+ $('ssc-login').onclick=async()=>{
+   const password=$('ssc-pass').value;
+   if(authMethod==='username'){
+     const chosen_username=$('ssc-user').value.trim().toLowerCase();
+     if(!chosen_username||!password)return cloudNotice('Enter your username and password.');
+     cloudNotice('Signing in…');
+     try{await ensureAnonymous();const {data,error}=await client.rpc('ss_username_login',{chosen_username,chosen_password:password});
+       if(error)throw Error(error.message);
+       if(data!==true){cloudNotice('Incorrect username or password, or account temporarily locked.');return}
+       cloudNotice('Signed in. Loading Study Summit…');await boot();
+     }catch(err){cloudNotice('Could not sign in: '+(err.message||err)+'. Check that username-login SQL is installed and Anonymous Sign-Ins are enabled.');}
+     return;
+   }
+   const email=$('ssc-email').value.trim();if(!email||!password)return cloudNotice('Enter your email and password.');
+   cloudNotice('Signing in to older account…');const {error}=await client.auth.signInWithPassword({email,password});if(error)return cloudNotice(error.message);await boot();
+ };
  $('ssc-pass').onkeydown=e=>{if(e.key==='Enter')$('ssc-login').click()};
- $('ssc-logout').onclick=async()=>{await client.auth.signOut();person=null;profile=null;sessionStorage.removeItem('studydoc-active-account');sessionStorage.removeItem('ssCloudApplied');location.reload()};
+ $('ssc-logout').onclick=signOutCloud;
  $('ssc-check').onclick=async()=>{const ok=await refreshProfile();if(ok&&!banned(profile))location.reload();else cloudNotice('This ban is still active. Your data export options are available below.')};
  $('ssc-flash').onclick=()=>exportMine('flash');$('ssc-chats').onclick=()=>exportMine('chats');$('ssc-all').onclick=()=>exportMine('all');
- if(kind==='loading'){$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=true;cloudNotice('Checking cloud account and syncing your study data…')}
+ setMethod(authMethod);
+ if(kind==='loading'){$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=true;cloudNotice('Checking your account and syncing study data…')}
  if(kind==='banned')showBanned();
  return gate;
+}
+async function ensureAnonymous(){
+ const {data:{user},error}=await client.auth.getUser();
+ if(error)throw Error(error.message);
+ if(user?.is_anonymous)return;
+ if(user&&!user.is_anonymous){const {error:logoutErr}=await client.auth.signOut();if(logoutErr)throw Error(logoutErr.message)}
+ const {error:anonErr}=await client.auth.signInAnonymously();
+ if(anonErr)throw Error(anonErr.message);
+}
+async function signOutCloud(){
+ if(sessionMethod==='username')await client.rpc('ss_username_logout').catch(()=>{});
+ await client.auth.signOut();person=null;profile=null;
+ sessionStorage.removeItem('studydoc-active-account');sessionStorage.removeItem('ssCloudApplied');location.reload();
 }
 function showBanned(){const gate=$('ssCloudGate')||showGate();gate.hidden=false;$('ssc-loginArea').hidden=true;$('ssc-bannedArea').hidden=false;$('ssc-logout').parentElement.hidden=false;
  const until=profile.banned_until?'until '+new Date(profile.banned_until).toLocaleString():'permanently';$('ssc-banReason').textContent=`Account @${profile.username} banned ${until}. Reason: ${profile.ban_reason||'Admin decision'}`;cloudNotice('You can still export your own flashcards and saved chats.')}
@@ -69,7 +129,7 @@ function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.t
 function installButtons(){document.documentElement.classList.add('ss-cloud-active');
  const localShade=$('sdAuthShade');if(localShade)localShade.style.display='none';
  const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate();cloudNotice(`Signed in as @${profile?.username||'…'}. Sign out below to switch accounts.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
- const logout=$('sdAccountLogout');if(logout)logout.onclick=async()=>{await client.auth.signOut();sessionStorage.removeItem('studydoc-active-account');sessionStorage.removeItem('ssCloudApplied');location.reload()};
+ const logout=$('sdAccountLogout');if(logout)logout.onclick=signOutCloud;
  const actions=document.querySelector('.sd-profile-actions')||document.querySelector('.sd-profile-side')||document.body;
  if(!$('ssCloudAccountBtn')){const button=document.createElement('button');button.id='ssCloudAccountBtn';button.type='button';button.className='btn secondary small';button.textContent='☁ Cloud account';button.onclick=()=>open?.click();actions.append(button)}
  if(!$('ssCloudImportBtn')){const button=document.createElement('button');button.id='ssCloudImportBtn';button.type='button';button.className='btn secondary small';button.textContent='Import old backup';button.onclick=importLegacy;actions.append(button)}
@@ -97,7 +157,15 @@ async function boot(){
  showGate('loading');if(!client)return cloudNotice('Supabase library did not load. Check your connection.');
  try{
  const {data:{user},error}=await client.auth.getUser();if(error||!user){person=null;profile=null;sessionStorage.removeItem('studydoc-active-account');showGate();return}
- person=user;cloudId='cloud'+user.id.replace(/-/g,'');const logged=sessionStorage.getItem('studydoc-active-account');
+ if(user.is_anonymous){
+   sessionMethod='username';
+   const {data:account,error:lookupError}=await client.rpc('ss_username_me');
+   if(lookupError){person=null;showGate();cloudNotice('Username accounts need the SQL migration in Supabase. Enable Anonymous Sign-Ins in Authentication settings. Your older email account is available under Older email account.');return}
+   const row=Array.isArray(account)?account[0]:account;
+   if(!row?.id){person=null;showGate();return}
+   person={...user,id:row.id};
+ } else {sessionMethod='email';person=user}
+ cloudId='cloud'+person.id.replace(/-/g,'');const logged=sessionStorage.getItem('studydoc-active-account');
  if(logged!==cloudId){sessionStorage.setItem('studydoc-active-account',cloudId);sessionStorage.removeItem('ssCloudApplied');location.reload();return}
  if(!await refreshProfile())return;
  remote=await getRemote();
@@ -113,8 +181,11 @@ async function boot(){
  setInterval(async()=>{if(!person)return;const ok=await refreshProfile();if(!ok)return;if(banned(profile)){live=false;return}if(live){const nowRemote=await getRemote().catch(()=>null);if(nowRemote&&nowRemote.updated_at!==remote?.updated_at){const local=JSON.stringify(studyItems());if(local===lastSnapshot){remote=nowRemote;setStudy(nowRemote.data);lastSnapshot=JSON.stringify(studyItems());cloudNotice('New cloud updates received. Reload this page to view them.')}else cloudNotice('This account changed on another device. Export a backup before reloading.')}}},45000);
  }catch(err){showGate();cloudNotice('Could not open Study Summit Cloud: '+(err.message||err))}
 }
-async function importLegacy(){if(!person||banned(profile))return;const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;try{if(file.size>10000000)throw Error('Backups must be smaller than 10 MB.');const obj=JSON.parse(await file.text());if(obj.kind!=='study-summit-personal-backup'||!obj.items||typeof obj.items!=='object')throw Error('Please select a Study Lab personal backup JSON file.');
- const allowed=Object.fromEntries(Object.entries(obj.items).filter(([k,v])=>typeof v==='string'&&v.length<1000000&&(STORE.includes(k)||(/^(studydock|studysync|study-summit|ss-)/.test(k)&&/(chat|doc|flash|note|card|agenda|learning|skill|task|progress|study|personalization)/i.test(k)&&!/(auth|password|credential|token|admin|ban|moderat|role|account)/i.test(k)))).slice(0,100));
+async function importLegacy(){if(!person||banned(profile))return;const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;try{if(file.size>10000000)throw Error('Backups must be smaller than 10 MB.');const obj=JSON.parse(await file.text());const isLocalBackup=obj.kind==='study-summit-personal-backup'&&obj.items&&typeof obj.items==='object';
+ const isCloudExport=obj.kind==='study-summit-cloud-export'&&obj.data&&typeof obj.data==='object';
+ if(!isLocalBackup&&!isCloudExport)throw Error('Select a Study Lab personal backup or cloud study export JSON file.');
+ const raw=isLocalBackup?obj.items:obj.data;
+ const allowed=Object.fromEntries(Object.entries(raw).map(([k,v])=>[k,typeof v==='string'?v:JSON.stringify(v)]).filter(([k,v])=>typeof v==='string'&&v.length<1000000&&(STORE.includes(k)||(/^(studydock|studysync|study-summit|ss-)/.test(k)&&/(chat|doc|flash|note|card|agenda|learning|skill|task|progress|study|personalization)/i.test(k)&&!/(auth|password|credential|token|admin|ban|moderat|role|account)/i.test(k)))).slice(0,100));
  if(!Object.keys(allowed).length)throw Error('No study data found in that backup.');if(!confirm('Import '+Object.keys(allowed).length+' study sections into this cloud account? This replaces the matching sections already here.'))return;setStudy(allowed);await uploadSnapshot();alert('Study backup imported. Reloading Study Summit…');location.reload()}catch(e){alert('Import failed: '+e.message)}};picker.click()}
 async function sendReport(){if(!person||banned(profile))return;const about=prompt('Username involved (optional):','');if(about===null)return;
  const message=prompt('Describe what happened (at least 10 characters):');if(message===null)return;
@@ -147,7 +218,7 @@ function addStyling(){const style=document.createElement('style');style.textCont
 .ssc-muted,.ssc-caption{color:#a6b7d2}.ssc-caption{font-size:12px}.ssc-shell label{display:block;font-weight:700;font-size:12px;margin-top:14px;margin-bottom:5px}
 .ssc-shell input,.ssc-user select{width:100%;box-sizing:border-box;border:1px solid #486080;border-radius:9px;padding:11px;background:#0c1524;color:#fff;font:inherit}
 .ssc-row{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}.ssc-row>button{flex:1}.ssc-shell button,.ssc-staffbox button{cursor:pointer;border:1px solid #8a89d8;background:#7978d6;color:#fff;border-radius:9px;padding:9px 13px;font-weight:720;font:inherit}
-.ssc-shell button.ssc-light,.ssc-staffbox button.ssc-light{background:#25324c;border-color:#49607d}.ssc-shell button:hover,.ssc-staffbox button:hover{filter:brightness(1.2)}
+.ssc-methods{display:flex;gap:8px;margin:16px 0}.ssc-methods button{flex:1;font-size:12px;padding:9px 6px}.ssc-methods .ssc-selected{background:#7978d6!important;border-color:#9c9bfd!important;color:#fff!important}.ssc-shell button.ssc-light,.ssc-staffbox button.ssc-light{background:#25324c;border-color:#49607d}.ssc-shell button:hover,.ssc-staffbox button:hover{filter:brightness(1.2)}
 .ssc-banned{color:#ff657b;font-weight:950;font-size:35px;letter-spacing:1px;text-align:center;margin:18px 0 8px}.ssc-user{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #33425c;padding:12px 0}
 .ssc-user>div{flex:1;min-width:190px}.ssc-user small{display:block;color:#a8b5cb;overflow-wrap:anywhere}.ssc-user select{width:150px}.ssc-title-row{display:flex;justify-content:space-between;gap:15px}.ssc-staffbox h3{margin:24px 0 3px}.ssc-audit{padding:7px 0;border-bottom:1px solid #2e3a52;font-size:12px;color:#b5c3dd}
 `;document.head.append(style)}
