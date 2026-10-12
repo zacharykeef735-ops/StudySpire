@@ -65,9 +65,9 @@ function showGate(kind='login'){
      if(password.length<10||new TextEncoder().encode(password).length>72)return cloudNotice('Use a password of at least 10 characters and no more than 72 bytes.');
      if(!confirm('Username accounts have no email recovery. Have you saved your password?'))return;
      cloudNotice('Creating your username account…');
-     try{await ensureAnonymous();const {error}=await client.rpc('ss_username_register',{chosen_username,chosen_password:password});
+     let phase='starting a secure session';try{await ensureAnonymous();phase='creating your username account';const {error}=await client.rpc('ss_username_register',{chosen_username,chosen_password:password});
        if(error)throw Error(error.message);cloudNotice('Account created. Loading Study Summit…');await boot();
-     }catch(err){cloudNotice('Could not create account: '+(err.message||err)+'. Check that the username SQL migration was run and Anonymous Sign-Ins are enabled.');}
+     }catch(err){cloudNotice('Could not create account ('+phase+'): '+(err.message||err));}
      return;
    }
    const row=$('ssc-nameRow');if(row.hidden){row.hidden=false;$('ssc-register').textContent='Finish registration';cloudNotice('Choose a username, then press Finish registration.');return}
@@ -83,11 +83,11 @@ function showGate(kind='login'){
      const chosen_username=$('ssc-user').value.trim().toLowerCase();
      if(!chosen_username||!password)return cloudNotice('Enter your username and password.');
      cloudNotice('Signing in…');
-     try{await ensureAnonymous();const {data,error}=await client.rpc('ss_username_login',{chosen_username,chosen_password:password});
+     let phase='starting a secure session';try{await ensureAnonymous();phase='checking your credentials';const {data,error}=await client.rpc('ss_username_login',{chosen_username,chosen_password:password});
        if(error)throw Error(error.message);
        if(data!==true){cloudNotice('Incorrect username or password, or account temporarily locked.');return}
        cloudNotice('Signed in. Loading Study Summit…');await boot();
-     }catch(err){cloudNotice('Could not sign in: '+(err.message||err)+'. Check that username-login SQL is installed and Anonymous Sign-Ins are enabled.');}
+     }catch(err){cloudNotice('Could not sign in ('+phase+'): '+(err.message||err));}
      return;
    }
    const email=$('ssc-email').value.trim();if(!email||!password)return cloudNotice('Enter your email and password.');
@@ -103,19 +103,25 @@ function showGate(kind='login'){
  return gate;
 }
 async function ensureAnonymous(){
- // getUser() throws AuthSessionMissingError when no one is signed in yet.
- // A missing session is normal here: create an anonymous Supabase session.
- const {data, error:sessionErr}=await client.auth.getSession();
- if(sessionErr)throw Error(sessionErr.message);
- const session=data?.session;
+ // A missing Supabase session is the NORMAL state for a first-time signup.
+ // Only a real session can be reused; otherwise create an anonymous one.
+ const isMissing=e=>e?.name==='AuthSessionMissingError'||/auth session missing/i.test(String(e?.message||e||''));
+ let session=null;
+ try{
+   const {data,error}=await client.auth.getSession();
+   if(error && !isMissing(error))throw Error('Checking session: '+error.message);
+   session=data?.session||null;
+ }catch(e){if(!isMissing(e))throw e;}
  if(session?.user?.is_anonymous)return;
  if(session){
-   const {error:logoutErr}=await client.auth.signOut();
-   if(logoutErr)throw Error(logoutErr.message);
+   const {error:logoutErr}=await client.auth.signOut({scope:'local'});
+   if(logoutErr&&!isMissing(logoutErr))throw Error('Switching accounts: '+logoutErr.message);
  }
- const {data:anonData,error:anonErr}=await client.auth.signInAnonymously();
- if(anonErr)throw Error(anonErr.message);
- if(!anonData?.session)throw Error('Supabase did not return an anonymous session. Check Anonymous Sign-Ins in your Supabase project.');
+ let response;
+ try{response=await client.auth.signInAnonymously();}
+ catch(e){throw Error('Starting anonymous sign-in: '+(e?.message||e));}
+ if(response?.error)throw Error('Starting anonymous sign-in: '+response.error.message);
+ if(!response?.data?.session)throw Error('Anonymous sign-in returned no session. Check Supabase Authentication → Anonymous Sign-Ins.');
 }
 async function signOutCloud(){
  if(sessionMethod==='username')await client.rpc('ss_username_logout').catch(()=>{});
