@@ -61,7 +61,7 @@ $$;
 -- Registration: the client first calls client.auth.signInAnonymously().
 -- Then call: client.rpc('ss_username_register', { chosen_username, chosen_password }).
 create or replace function public.ss_username_register(chosen_username text, chosen_password text)
-returns uuid language plpgsql security definer set search_path = 'pg_catalog, extensions, public' as $$
+returns uuid language plpgsql security definer set search_path = pg_catalog, extensions as $$
 declare
   session_id uuid := auth.uid();
   name_clean text := lower(trim(coalesce(chosen_username,'')));
@@ -95,7 +95,7 @@ $$;
 -- the username + password. Failure tracking is shared across devices.
 -- A false result means invalid credentials or a temporary lockout.
 create or replace function public.ss_username_login(chosen_username text, chosen_password text)
-returns boolean language plpgsql security definer set search_path = 'pg_catalog, extensions, public' as $$
+returns boolean language plpgsql security definer set search_path = pg_catalog, extensions as $$
 declare
   session_id uuid := auth.uid();
   account_id uuid;
