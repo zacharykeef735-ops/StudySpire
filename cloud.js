@@ -103,12 +103,19 @@ function showGate(kind='login'){
  return gate;
 }
 async function ensureAnonymous(){
- const {data:{user},error}=await client.auth.getUser();
- if(error)throw Error(error.message);
- if(user?.is_anonymous)return;
- if(user&&!user.is_anonymous){const {error:logoutErr}=await client.auth.signOut();if(logoutErr)throw Error(logoutErr.message)}
- const {error:anonErr}=await client.auth.signInAnonymously();
+ // getUser() throws AuthSessionMissingError when no one is signed in yet.
+ // A missing session is normal here: create an anonymous Supabase session.
+ const {data, error:sessionErr}=await client.auth.getSession();
+ if(sessionErr)throw Error(sessionErr.message);
+ const session=data?.session;
+ if(session?.user?.is_anonymous)return;
+ if(session){
+   const {error:logoutErr}=await client.auth.signOut();
+   if(logoutErr)throw Error(logoutErr.message);
+ }
+ const {data:anonData,error:anonErr}=await client.auth.signInAnonymously();
  if(anonErr)throw Error(anonErr.message);
+ if(!anonData?.session)throw Error('Supabase did not return an anonymous session. Check Anonymous Sign-Ins in your Supabase project.');
 }
 async function signOutCloud(){
  if(sessionMethod==='username')await client.rpc('ss_username_logout').catch(()=>{});
