@@ -1027,54 +1027,93 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         <button class="btn primary" id="loadLocalModel" type="button">⬇ Load browser AI</button>
         <button class="btn ghost" id="unloadLocalModel" type="button">Disconnect</button>
       </div>
-      <div id="localModelStatus" class="status show info" role="status" aria-live="polite">Model not loaded. Loading requires internet for the first download.</div>
+      <div id="localModelStatus" class="status show info" role="status" aria-live="polite">Model not loaded. Loading requires internet for the first download.</div><details id="localModelHelp" style="margin-top:8px"><summary style="cursor:pointer;color:#b5c5f4;font-size:12px">AI stuck at 0%? Troubleshooting</summary><p class="hint" style="margin:8px 0">A first-time model download can take several minutes, especially on slower connections. Browser AI needs WebGPU and access to external model downloads. Try Chrome or Edge with graphics acceleration enabled, a different connection if school Wi-Fi blocks downloads, and the Qwen 2.5 0.5B model. Reload this page before retrying a stalled download. It runs locally; no API key is required.</p></details>
     `;
     (el("ssPanelAI")||dialogBody).prepend(panel);
 
+    // Prevent first-load failures from looking like a permanent 0% spinner.
+    // The engine needs WebGPU and downloads model weights from third-party hosts.
+    async function withDeadline(promise, ms, message) {
+      let timer;
+      try { return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms)})]); }
+      finally {clearTimeout(timer)}
+    }
+    async function importWebLLM(){
+      const urls=["https://esm.run/@mlc-ai/web-llm","https://esm.sh/@mlc-ai/web-llm"];
+      let lastError;
+      for(const url of urls){
+        try{
+          const mod=await withDeadline(import(url),30000,"Module download timed out");
+          if(typeof mod?.CreateMLCEngine==="function")return mod;
+          throw new Error("The downloaded module has no model loader");
+        }catch(e){lastError=e;setStatus("Model library unavailable from one server; trying backup…","warn")}
+      }
+      throw new Error("Could not download the browser AI library from either server. "+(lastError?.message||"Check your connection or blockers."));
+    }
     el("loadLocalModel").addEventListener("click", async function () {
       if (loading) return;
       loading = true;
       const button = el("loadLocalModel");
       button.disabled = true;
+      let monitor=null;
       try {
         if (!navigator.gpu) {
-          throw new Error("WebGPU is not available in this browser/device. Try a recent Chrome or Edge on a compatible computer.");
+          throw new Error("WebGPU is unavailable. Try an updated Chrome or Edge browser on a computer with graphics acceleration enabled.");
         }
+        setStatus("Step 1/3 · Checking graphics acceleration…","info");
+        const adapter=await withDeadline(navigator.gpu.requestAdapter(),15000,"Graphics check timed out");
+        if(!adapter)throw new Error("No compatible WebGPU graphics adapter was found. Enable hardware acceleration in Chrome/Edge settings, restart the browser, and try again.");
         const modelSelect = el("localModelChoice");
         const chosenModelId = modelSelect && MODEL_CATALOG[modelSelect.value] ? modelSelect.value : DEFAULT_MODEL_ID;
         const chosenModel = MODEL_CATALOG[chosenModelId];
         try { localStorage.setItem(sdAccountKey("studydockLocalModel"), chosenModelId); } catch (_) {}
         if (localEngine && loadedModelId === chosenModelId) {
-          setConnected(true);
-          setStatus(chosenModel.label + " is already loaded and ready.", "good");
-          return;
+          setConnected(true);setStatus(chosenModel.label+" is already loaded and ready.","good");return;
         }
         if (localEngine && typeof localEngine.unload === "function") {
-          setStatus("Switching models and freeing memory…", "info");
-          await localEngine.unload();
-          localEngine = null;
-          loadedModelId = null;
-          setConnected(false);
+          setStatus("Switching models and freeing memory…","info");
+          await localEngine.unload();localEngine=null;loadedModelId=null;setConnected(false);
         }
-        setStatus("Loading " + chosenModel.label + ". First-time downloads can take a while; keep this tab open.", "info");
-        const module = await import("https://esm.run/@mlc-ai/web-llm");
-        const CreateMLCEngine = module.CreateMLCEngine;
-        localEngine = await CreateMLCEngine(chosenModelId, {
-          initProgressCallback: report => {
-            const pct = typeof report?.progress === "number" ? " (" + Math.round(report.progress * 100) + "%)" : "";
-            setStatus((report?.text || "Loading model…") + pct, "info");
+        setStatus("Step 2/3 · Connecting to the model library…","info");
+        const module=await importWebLLM();
+        const known=Array.isArray(module.prebuiltAppConfig?.model_list)?module.prebuiltAppConfig.model_list:[];
+        if(known.length&&!known.some(m=>m.model_id===chosenModelId)){
+          throw new Error(chosenModel.label+" is not offered by this version of WebLLM. Try Qwen 2.5 0.5B or Llama 3.2 1B.");
+        }
+        setStatus("Step 3/3 · Preparing "+chosenModel.label+". First use downloads model files; this may take several minutes.","info");
+        let progress=0,progressAt=Date.now(),lastReport="Preparing model download";
+        monitor=setInterval(()=>{
+          if(!loading)return;
+          const seconds=Math.round((Date.now()-progressAt)/1000);
+          if(seconds>=120&&progress<0.01){
+            setStatus("Still at 0% after "+seconds+" seconds. Model files may be blocked or the download is stalled. Try another network, disable a blocking extension for this site, or reload and choose a different model.","warn");
+          }else if(seconds>=45&&progress<0.01){
+            setStatus("Preparing model… 0%. No download progress yet ("+seconds+"s). Checking model hosting and browser cache; this does not always mean a failure.","warn");
+          }else if(seconds>=90){
+            setStatus(lastReport+" · No progress for "+seconds+"s. The download or GPU initialization may be stalled.","warn");
+          }
+        },12000);
+        // The engine can take a while compiling shaders even after downloading weights.
+        const engine=await module.CreateMLCEngine(chosenModelId,{
+          initProgressCallback:report=>{
+            const fraction=Number(report?.progress);
+            if(Number.isFinite(fraction)&&fraction>progress){progress=fraction;progressAt=Date.now()}
+            lastReport=String(report?.text||"Loading model…").slice(0,380);
+            const pct=Number.isFinite(fraction)?" ("+Math.round(Math.max(0,Math.min(1,fraction))*100)+"%)":"";
+            setStatus(lastReport+pct,"info");
           }
         });
-        loadedModelId = chosenModelId;
+        localEngine=engine;loadedModelId=chosenModelId;
         setConnected(true);
-        setStatus(chosenModel.label + " is ready for tutoring and Mini.", "good");
-        if (typeof toast === "function") toast("Browser AI loaded.");
-      } catch (err) {
+        setStatus(chosenModel.label+" is ready for tutoring and Mini.","good");
+        if(typeof toast==="function")toast("Browser AI loaded.");
+      }catch(err){
         setConnected(false);
-        setStatus((err && err.message ? err.message : String(err)) + " Check your internet connection and try again. If you're on a phone, this model may be too demanding for the device.", "bad");
-      } finally {
-        loading = false;
-        button.disabled = false;
+        const detail=err?.message||String(err);
+        setStatus("Browser AI could not load: "+detail+" Try the smallest Qwen 2.5 0.5B model, verify Chrome/Edge hardware acceleration, and check that downloads from Hugging Face are allowed.","bad");
+      }finally{
+        if(monitor)clearInterval(monitor);
+        loading=false;button.disabled=false;
       }
     });
 
@@ -2375,6 +2414,6 @@ renderEverything();
 </script>
 <!-- Study Summit v3.77: username/password accounts; older email Owners retained -->
 <script src="cloud-config.js"></script>
-<script src="cloud.js?v=3.77.4"></script>
+<script src="cloud.js?v=3.77.5"></script>
 </body>
 </html>
