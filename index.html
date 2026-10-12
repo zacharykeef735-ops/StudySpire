@@ -799,21 +799,21 @@ const STORAGE=sdAccountKey('studydock-simple-v1');
 const PROVIDERS={local:{label:'Browser tutor'}};
 const state={provider:'local',model:'',connected:false,models:[],mini:false,history:[],attachment:null,attachmentName:'',lastAnswer:'',lastQuestion:'',lastProvider:'',lastDraft:''};
 let toastTimer;
-function toast(msg){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',2800)}
-function status(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='status show '+type}
+function toast(msg){const t=$('toast');if(!t){console.info('StudySummit:',msg);return}t.textContent=msg;t.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>{if(t.isConnected)t.style.display='none'},2800)}
+function status(id,msg,type='info'){const el=$(id);if(!el){console.warn('StudySummit missing status target:',id,msg);return}el.textContent=msg;el.className='status show '+type}
 function clearStatus(id){const el=$(id);if(el){el.textContent='';el.className='status'}}
-function switchPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));$('crumbPage').textContent=({answer:'Ask a question',essay:'Essay writer',saved:'Saved work'})[page]||page;window.scrollTo({top:0,behavior:'smooth'});if(page==='saved')renderHistory()}
+function switchPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));const crumb=$('crumbPage');if(crumb)crumb.textContent=({answer:'Ask a question',essay:'Essay writer',saved:'Saved work'})[page]||page;window.scrollTo({top:0,behavior:'smooth'});if(page==='saved')renderHistory()}
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>switchPage(b.dataset.page)));
 function loadPrefs(){
- try{const d=JSON.parse(localStorage.getItem(STORAGE)||'{}');state.mini=true;state.history=Array.isArray(d.history)?d.history.slice(-80):[];}catch(e){}
+ try{const d=JSON.parse(localStorage.getItem(STORAGE)||'{}');state.mini=true;state.history=Array.isArray(d?.history)?d.history.filter(item=>item&&typeof item==='object'&&typeof item.content==='string').map(item=>({...item,title:String(item.title||'Saved work').slice(0,200),content:item.content.slice(0,100000),type:item.type==='essay'?'essay':'answer',created:String(item.created||'')})).slice(-80):[]}catch(e){state.history=[]}
  state.provider='local';state.model='';state.connected=false;
  updateMini();updateConnectionUI();renderHistory();updateWordStats();
 }
 function persist(){try{localStorage.setItem(STORAGE,JSON.stringify({mini:state.mini,history:state.history.slice(-80)}))}catch(e){toast('Browser storage is full. Export important notes.')}}
-function updateConnectionUI(){const on=!!state.connected;const label=on?'Browser tutor ready':'Load browser tutor';$('topMode').textContent=label;$('sideMode').textContent=label;$('topDot').classList.toggle('ok',on);$('sideDot').classList.toggle('ok',on)}
-function updateMini(){ $('miniEnabled').checked=state.mini;$('miniLauncher').classList.toggle('enabled',state.mini);if(!state.mini)closeMini() }
-function openSettings(){ $('settingsShade').classList.add('open');$('ssTabAI')?.focus({preventScroll:true});$('settingsShade').querySelector('.dialog').scrollTop=0 }
-function closeSettings(){ $('settingsShade').classList.remove('open') }
+function updateConnectionUI(){const on=!!state.connected,label=on?'Browser tutor ready':'Load browser tutor';for(const id of ['topMode','sideMode']){const node=$(id);if(node)node.textContent=label}for(const id of ['topDot','sideDot']){const node=$(id);if(node)node.classList.toggle('ok',on)}}
+function updateMini(){const toggle=$('miniEnabled'),launcher=$('miniLauncher');if(toggle)toggle.checked=state.mini;if(launcher)launcher.classList.toggle('enabled',state.mini);if(!state.mini&&$('miniPanel'))closeMini()}
+function openSettings(){const shade=$('settingsShade');if(!shade)return;shade.classList.add('open');$('ssTabAI')?.focus({preventScroll:true});const dialog=shade.querySelector('.dialog');if(dialog)dialog.scrollTop=0}
+function closeSettings(){const shade=$('settingsShade');if(shade)shade.classList.remove('open')}
 $('openSettings').onclick=openSettings;$('openSettingsSide').onclick=openSettings;$('openSettingsCard').onclick=openSettings;$('closeSettings').onclick=closeSettings;$('settingsShade').addEventListener('click',e=>{if(e.target===$('settingsShade'))closeSettings()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSettings()});
 window.SD_TUTOR_POLICY = `STUDY SUMMIT — TEACH-FIRST TUTOR POLICY (applies to the main tutor, Mini, chat history, topic lessons, and questions based on documents).
 You are a patient, encouraging, accurate teacher. Your purpose is to help a learner understand HOW to reach an answer, not to do assessed work for them. Match the explanation to their selected subject and education level. Keep the tone natural, direct, and respectful; never talk down to the learner.
@@ -937,16 +937,14 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
 </style>
 <script>
 (function () {
+  // IDs checked against WebLLM's supported prebuiltAppConfig model list.
   const MODEL_CATALOG = {
-    "Qwen2.5-0.5B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 0.5B", tier: "Fastest", detail: "Quick everyday questions; smallest option" },
-    "Llama-3.2-1B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 1B", tier: "Fast", detail: "Good lightweight general assistant" },
-    "Qwen2.5-1.5B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 1.5B", tier: "Balanced", detail: "Stronger general explanations; slower to load" },
-    "Qwen2.5-Math-1.5B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 Math 1.5B", tier: "Balanced · Math", detail: "Specialized for math problems" },
-    "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 Coder 1.5B", tier: "Balanced · Coding", detail: "Specialized for code and debugging" },
-    "Qwen2.5-3B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 3B", tier: "More capable · Slower", detail: "More detailed general answers; larger download" },
-    "Llama-3.2-3B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 3B", tier: "More capable · Slower", detail: "Larger general assistant; needs more memory" }
-  };
-  const DEFAULT_MODEL_ID = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+    "SmolLM2-360M-Instruct-q4f32_1-MLC": { label: "SmolLM2 360M", tier: "Fastest · small", detail: "Quick, basic hints for low-memory devices" },
+    "Llama-3.2-1B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 1B", tier: "Fast · recommended", detail: "Good everyday study tutoring" },
+    "Llama-3.2-1B-Instruct-q4f32_1-MLC": { label: "Llama 3.2 1B · compatibility", tier: "Fast · more memory", detail: "Alternative when the recommended version is incompatible" },
+    "SmolLM2-1.7B-Instruct-q4f32_1-MLC": { label: "SmolLM2 1.7B", tier: "Balanced", detail: "More detailed responses; needs more device memory" },
+    "Llama-3.2-3B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 3B", tier: "More capable · slower", detail: "Detailed general explanations; larger download" }
+  };  const DEFAULT_MODEL_ID = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
   let localEngine = null;
   let loadedModelId = null;
   let loading = false;
@@ -1005,29 +1003,18 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       <div class="fieldgroup">
         <label class="label" for="localModelChoice">AI model · grouped by speed and specialty</label>
         <select id="localModelChoice" class="field">
-          <optgroup label="⚡ FASTEST — small download">
-            <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B — quick questions</option>
-          </optgroup>
-          <optgroup label="🚀 FAST — lightweight general AI">
-            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B — general assistant</option>
-          </optgroup>
-          <optgroup label="⚖️ BALANCED — general + subject specialists">
-            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B — balanced general model</option>
-            <option value="Qwen2.5-Math-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 Math 1.5B — math specialist</option>
-            <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 Coder 1.5B — coding specialist</option>
-          </optgroup>
-          <optgroup label="🧠 MORE CAPABLE — slower / more memory">
-            <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B — stronger general answers</option>
-            <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B — larger general assistant</option>
-          </optgroup>
+          <optgroup label="⚡ FASTEST — smaller download"><option value="SmolLM2-360M-Instruct-q4f32_1-MLC">SmolLM2 360M — smallest model</option></optgroup>
+          <optgroup label="🚀 FAST — general tutoring"><option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B — recommended</option><option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">Llama 3.2 1B — compatibility option</option></optgroup>
+          <optgroup label="⚖️ BALANCED — more detail"><option value="SmolLM2-1.7B-Instruct-q4f32_1-MLC">SmolLM2 1.7B — balanced</option></optgroup>
+          <optgroup label="🧠 MORE CAPABLE — bigger download"><option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B — stronger general answers</option></optgroup>
         </select>
-        <div class="fieldgroup"><label class="label" for="ssTutorSpeed">Tutor response speed</label><select id="ssTutorSpeed" class="field"><option value="fast">Fast — brief hints (recommended)</option><option value="balanced">Balanced — a little more detail</option><option value="detailed">Detailed — slower explanations</option></select><div class="hint">Fast mode uses fewer words and less conversation history. Model size still determines most of the speed.</div></div><div class="hint" id="modelDetailHint">Choose by speed or specialty. Recommended all-rounder: Qwen 2.5 3B, if your device has enough memory. Switching models requires a separate first download; browser cache may speed up later launches. Requires WebGPU. These models are text-only and cannot inspect worksheet images.</div>
+        <div class="fieldgroup"><label class="label" for="ssTutorSpeed">Tutor response speed</label><select id="ssTutorSpeed" class="field"><option value="fast">Fast — brief hints (recommended)</option><option value="balanced">Balanced — a little more detail</option><option value="detailed">Detailed — slower explanations</option></select><div class="hint">Fast mode uses fewer words and less conversation history. Model size still determines most of the speed.</div></div><div class="hint" id="modelDetailHint">Choose by speed or specialty. Recommended all-rounder: Llama 3.2 1B on most devices, or Llama 3.2 3B on stronger hardware. Switching models requires a separate first download; browser cache may speed up later launches. Requires WebGPU. These models are text-only and cannot inspect worksheet images.</div>
       </div>
       <div class="row">
         <button class="btn primary" id="loadLocalModel" type="button">⬇ Load browser AI</button>
         <button class="btn ghost" id="unloadLocalModel" type="button">Disconnect</button>
       </div>
-      <div id="localModelStatus" class="status show info" role="status" aria-live="polite">Model not loaded. Loading requires internet for the first download.</div><details id="localModelHelp" style="margin-top:8px"><summary style="cursor:pointer;color:#b5c5f4;font-size:12px">AI stuck at 0%? Troubleshooting</summary><p class="hint" style="margin:8px 0">A first-time model download can take several minutes, especially on slower connections. Browser AI needs WebGPU and access to external model downloads. Try Chrome or Edge with graphics acceleration enabled, a different connection if school Wi-Fi blocks downloads, and the Qwen 2.5 0.5B model. Reload this page before retrying a stalled download. It runs locally; no API key is required.</p></details>
+      <div id="localModelStatus" class="status show info" role="status" aria-live="polite">Model not loaded. Loading requires internet for the first download.</div><details id="localModelHelp" style="margin-top:8px"><summary style="cursor:pointer;color:#b5c5f4;font-size:12px">AI stuck at 0%? Troubleshooting</summary><p class="hint" style="margin:8px 0">A first-time model download can take several minutes, especially on slower connections. Browser AI needs WebGPU and access to external model downloads. Try Chrome or Edge with graphics acceleration enabled, a different connection if school Wi-Fi blocks downloads, and the SmolLM2 360M model. Reload this page before retrying a stalled download. It runs locally; no API key is required.</p></details>
     `;
     (el("ssPanelAI")||dialogBody).prepend(panel);
 
