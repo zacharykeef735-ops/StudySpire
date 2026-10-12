@@ -138,7 +138,7 @@ Students use the normal study workspace without staff moderation controls.
 2. On the sign-in screen, choose **Forgot password? Owner-assisted reset**.
 3. Enter the username and click **Request reset**.
 4. Contact an Owner so they can independently verify that you own the account.
-5. After approval, receive a **one-time recovery code** from the Owner.
+5. After approval, receive a **6-digit one-time recovery code** from the Owner.
 6. Return to the recovery form, enter your username, recovery code, and new password.
 7. Click **Set new password**, then sign in with the new password.
 
@@ -150,10 +150,10 @@ The request screen intentionally does not reveal whether a username exists.
 2. Review the pending request.
 3. **Verify the requester's identity through a trusted independent channel.** A username alone is not proof of ownership.
 4. Click **Issue one-time code**, or **Deny request** if verification fails.
-5. Copy the generated code and privately share it with the verified account holder. It is displayed only once.
+5. Copy the generated **6-digit code** and privately share it with the verified account holder. It is displayed only once.
 6. The account holder—not the Owner—chooses and enters the new password.
 
-**Recovery safeguards:** Codes are random, stored as hashes, expire after one hour, and allow at most five incorrect attempts. Requests are throttled. Successful recovery invalidates existing username-session mappings and is logged in the moderation audit.
+**Recovery safeguards:** Codes contain **6 numeric digits** (including possible leading zeroes), are generated with cryptographically secure randomness, stored as hashes, expire after **15 minutes**, and allow at most **five incorrect attempts**. Requests are throttled. Successful recovery invalidates existing username-session mappings and is logged in the moderation audit.
 
 **Limitations:** Identity verification is currently manual; there is no automated email or phone verification. Never request, collect, or share a user's password. The recovery workflow needs full end-to-end testing before production use.
 
@@ -221,11 +221,12 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
    1. `supabase.sql` — base profiles, study data, reports, RLS, moderation.
    2. `username-login-migration.sql` — username credentials, anonymous-session mapping, username login.
    3. `role-permissions-recovery-migration.sql` — role-scoped dashboards and Owner-assisted password recovery.
+   4. `six-digit-recovery-codes-migration.sql` — updates recovery functions to use 6-digit codes and invalidates any previously issued long codes.
 6. Verify the SQL statements succeeded and that username registration/login work.
 7. Create an initial Owner through a **trusted project-administrator-only database operation** after verifying the intended account. Never let public signup or client-side JavaScript grant Owner privileges.
 8. Deploy the static website and test role permissions with separate accounts.
 
-**Migration ordering matters:** The later files redefine selected functions from the base schema. Applying an old SQL file *after* a newer one can unintentionally undo fixes or weaken authorization checks.
+**Migration ordering matters:** The later files redefine selected functions from the base schema. Upgrading from the previous 32-character code format invalidates outstanding codes; Owners must reissue them. Applying an old SQL file *after* a newer one can unintentionally undo fixes or weaken authorization checks.
 
 **Key safety rule:** `cloud-config.js` may contain the **public publishable/anon key**, but **never** a Supabase secret, `service_role` key, or database password. Those must not be committed to a public repository or placed in browser JavaScript.
 
@@ -238,7 +239,8 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
 | `cloud-config.js` | Public Supabase project URL and publishable key configuration. |
 | `supabase.sql` | Original/base Supabase schema, reports, profiles, policies, and moderation functions. |
 | `username-login-migration.sql` | Username credentials and custom login RPCs. |
-| `role-permissions-recovery-migration.sql` | Newer role restrictions and Owner-reviewed password recovery RPCs. |
+| `role-permissions-recovery-migration.sql` | Role restrictions and Owner-reviewed password recovery RPCs, now using 6-digit codes. |
+| `six-digit-recovery-codes-migration.sql` | Incremental update to shorter codes for existing installations. |
 | `README.md` | Project overview, user instructions, setup, architecture, and troubleshooting. |
 
 ## Security and limitations
@@ -262,7 +264,7 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
 | **Account has no Owner/Admin dashboard** | Confirm its server-side role; newly registered accounts start as Students. Sign out and back in after promotion. |
 | **Role change denied** | Only an active Owner can assign roles; the last Owner cannot be removed. |
 | **Recovery request not visible** | Confirm the request was made while signed out, an Owner is logged in, and the newest recovery migration is installed. |
-| **Recovery code rejected** | Check username and code, expiry (one hour), five-attempt limit, and whether the code has already been used. |
+| **Recovery code rejected** | Check username and all six digits, expiry (15 minutes), five-attempt limit, and whether the code has already been used. |
 | **Cloud sync fails** | Check the Supabase URL/key, network connection, active session, SQL policies, and browser console. Export a backup before troubleshooting. |
 | **AI stuck or download fails** | Check WebGPU support, device memory, connection, browser console, and available model. Temporary failures may retry automatically. |
 | **Website shows old version** | Check GitHub Pages deployment and perform a hard refresh to clear cached assets. |
