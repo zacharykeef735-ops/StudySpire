@@ -29,13 +29,13 @@ function setStudy(items){syncing=true;try{if(!items||typeof items!=='object'||Ar
 let authMethod='username',sessionMethod='email';
 function showGate(kind='login'){
  let gate=$('ssCloudGate');if(!gate){gate=document.createElement('section');gate.id='ssCloudGate';document.body.append(gate)}
- gate.hidden=false;gate.innerHTML=`<div class="ssc-shell"><div class="ssc-mark">✦</div><div class="ssc-heading">Study Summit <span>Cloud</span></div>
+ gate.hidden=false;gate.innerHTML=`<div class="ssc-shell"><div class="ssc-mark">✦</div><div class="ssc-title-row"><div class="ssc-heading">Study Summit <span>Cloud</span></div><button id="ssc-close" type="button" class="ssc-light" hidden aria-label="Close account menu">✕ Close</button></div>
  <p id="ssCloudNotice" class="ssc-muted" role="status" aria-live="polite">Your study space, on any device.</p>
  <div id="ssc-loginArea">
   <div class="ssc-methods" role="group" aria-label="Sign-in method"><button type="button" id="ssc-usernameMethod" class="ssc-method">Username + password</button><button type="button" id="ssc-emailMethod" class="ssc-method ssc-light">Older email account</button></div>
   <div id="ssc-userRow"><label for="ssc-user">Username</label><input id="ssc-user" autocomplete="username" placeholder="Your username" maxlength="32" spellcheck="false" autocapitalize="none"/></div>
   <div id="ssc-emailRow" hidden><label for="ssc-email">Email address</label><input type="email" id="ssc-email" autocomplete="email" placeholder="you@example.com" maxlength="150"/></div>
-  <label for="ssc-pass">Password</label><input id="ssc-pass" type="password" autocomplete="current-password" placeholder="At least 10 characters for new accounts" minlength="8"/>
+  <label for="ssc-pass">Password</label><input id="ssc-pass" type="password" autocomplete="current-password" placeholder="At least 10 characters for new accounts" minlength="8"/><button id="ssc-showpass" type="button" class="ssc-light ssc-password-toggle" aria-pressed="false" aria-controls="ssc-pass">Show password</button>
   <div id="ssc-nameRow" hidden><label for="ssc-name">Username for older email account</label><input id="ssc-name" placeholder="Choose a username" maxlength="32" autocomplete="username"/></div>
   <div class="ssc-row"><button id="ssc-login" type="button">Sign in</button><button id="ssc-register" type="button" class="ssc-light">Create account</button></div>
   <p id="ssc-recoveryInfo" class="ssc-caption">No email needed for new username accounts. Save your password: self-service password recovery isn't available yet. Owner-assisted recovery is not implemented.</p>
@@ -53,10 +53,13 @@ function showGate(kind='login'){
    $('ssc-usernameMethod').classList.toggle('ssc-selected',!email);
    $('ssc-emailMethod').classList.toggle('ssc-selected',email);
    $('ssc-recoveryInfo').textContent=email?'Older email accounts use Supabase email/password. New registrations may require confirmation depending on your Supabase settings.':'No email needed. Use a strong password and keep it safe; password recovery is not available yet.';
-   $('ssc-pass').value='';
+   $('ssc-pass').value='';$('ssc-pass').type='password';$('ssc-showpass').textContent='Show password';$('ssc-showpass').setAttribute('aria-pressed','false');
  };
  $('ssc-usernameMethod').onclick=()=>setMethod('username');
  $('ssc-emailMethod').onclick=()=>setMethod('email');
+ $('ssc-showpass').onclick=()=>{const password=$('ssc-pass');const reveal=password.type==='password';password.type=reveal?'text':'password';$('ssc-showpass').textContent=reveal?'Hide password':'Show password';$('ssc-showpass').setAttribute('aria-pressed',String(reveal));};
+ $('ssc-close').onclick=()=>{if(person&&!banned(profile))gate.hidden=true;};
+ gate.onkeydown=e=>{if(e.key==='Escape'&&person&&!banned(profile))gate.hidden=true;};
  $('ssc-register').onclick=async()=>{
    const password=$('ssc-pass').value;
    if(authMethod==='username'){
@@ -99,6 +102,7 @@ function showGate(kind='login'){
  $('ssc-flash').onclick=()=>exportMine('flash');$('ssc-chats').onclick=()=>exportMine('chats');$('ssc-all').onclick=()=>exportMine('all');
  setMethod(authMethod);
  if(kind==='loading'){$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=true;cloudNotice('Checking your account and syncing study data…')}
+ $('ssc-close').hidden=!(person&&kind==='account'&&!banned(profile));
  if(kind==='banned')showBanned();
  return gate;
 }
@@ -126,22 +130,23 @@ async function ensureAnonymous(){
 async function signOutCloud(){
  if(sessionMethod==='username')await client.rpc('ss_username_logout').catch(()=>{});
  await client.auth.signOut();person=null;profile=null;
- sessionStorage.removeItem('studydoc-active-account');sessionStorage.removeItem('ssCloudApplied');location.reload();
+ sessionStorage.removeItem('ss-cloud-display-name');sessionStorage.removeItem('studydoc-active-account');sessionStorage.removeItem('ssCloudApplied');location.reload();
 }
-function showBanned(){const gate=$('ssCloudGate')||showGate();gate.hidden=false;$('ssc-loginArea').hidden=true;$('ssc-bannedArea').hidden=false;$('ssc-logout').parentElement.hidden=false;
+function showBanned(){const gate=$('ssCloudGate')||showGate();gate.hidden=false;if($('ssc-close'))$('ssc-close').hidden=true;$('ssc-loginArea').hidden=true;$('ssc-bannedArea').hidden=false;$('ssc-logout').parentElement.hidden=false;
  const until=profile.banned_until?'until '+new Date(profile.banned_until).toLocaleString():'permanently';$('ssc-banReason').textContent=`Account @${profile.username} banned ${until}. Reason: ${profile.ban_reason||'Admin decision'}`;cloudNotice('You can still export your own flashcards and saved chats.')}
 function exportMine(kind){const items=remote?.data||studyItems();const result={kind:'study-summit-cloud-export',account:profile?.username,exportedAt:new Date().toISOString(),data:{}};
  for(const [k,v] of Object.entries(items)){if(typeof v!=='string')continue;if(kind==='flash'&&!/(?:suite|card|flash|lab)/i.test(k))continue;if(kind==='chats'&&!/(?:chat|tutor|mini|suite|notes)/i.test(k))continue;
  try{const obj=JSON.parse(v);if(kind==='flash'&&k==='studydock-suite-v1')result.data[k]={cards:obj.cards||[]};else if(kind==='chats'&&k==='studydock-suite-v1')result.data[k]={chats:obj.chats||[]};else result.data[k]=obj}catch{result.data[k]=v}}
  download('study-summit-'+kind+'-'+Date.now()+'.json',result)}
 async function refreshProfile(){if(!person)return false;const {data,error}=await client.from('ss_profiles').select('id,username,role,banned,banned_until,ban_reason').eq('id',person.id).single();
- if(error){cloudNotice('Account status unavailable: '+error.message);return false}profile=data;role=profile.role||'student';if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate?.querySelector('#ssc-bannedArea')&&!gate.hidden){gate.hidden=true;}updateHeader()}return true}
+ if(error){cloudNotice('Account status unavailable: '+error.message);return false}profile=data;role=profile.role||'student';
+ try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate?.querySelector('#ssc-bannedArea')&&!gate.hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
-function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='Cloud account';const log=$('sdAccountLogout');if(log)log.textContent='Sign out';
+function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('ssTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log)log.textContent='Sign out';
  if($('ssCloudStaffBtn'))$('ssCloudStaffBtn').hidden=!['owner','admin','moderator'].includes(role)}
 function installButtons(){document.documentElement.classList.add('ss-cloud-active');
  const localShade=$('sdAuthShade');if(localShade)localShade.style.display='none';
- const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate();cloudNotice(`Signed in as @${profile?.username||'…'}. Sign out below to switch accounts.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
+ const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate('account');cloudNotice(`Signed in as @${profile?.username||'…'}. Sign out below to switch accounts.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
  const logout=$('sdAccountLogout');if(logout)logout.onclick=signOutCloud;
  const actions=document.querySelector('.sd-profile-actions')||document.querySelector('.sd-profile-side')||document.body;
  if(!$('ssCloudAccountBtn')){const button=document.createElement('button');button.id='ssCloudAccountBtn';button.type='button';button.className='btn secondary small';button.textContent='☁ Cloud account';button.onclick=()=>open?.click();actions.append(button)}
@@ -230,6 +235,7 @@ function addStyling(){const style=document.createElement('style');style.textCont
 .ssc-staffbox{width:min(100%,850px)}.ssc-mark{font-size:31px;color:#b4adff}.ssc-heading{font-size:25px;font-weight:800;letter-spacing:-.6px}.ssc-heading span{color:#aaa7ff}
 .ssc-muted,.ssc-caption{color:#a6b7d2}.ssc-caption{font-size:12px}.ssc-shell label{display:block;font-weight:700;font-size:12px;margin-top:14px;margin-bottom:5px}
 .ssc-shell input,.ssc-user select{width:100%;box-sizing:border-box;border:1px solid #486080;border-radius:9px;padding:11px;background:#0c1524;color:#fff;font:inherit}
+ .ssc-shell .ssc-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.ssc-shell .ssc-title-row button{white-space:nowrap;font-size:12px;padding:7px 10px}.ssc-shell button[hidden]{display:none!important}.ssc-shell .ssc-password-toggle{display:block;margin:8px 0 0 auto;font-size:12px;padding:6px 11px}
 .ssc-row{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}.ssc-row>button{flex:1}.ssc-shell button,.ssc-staffbox button{cursor:pointer;border:1px solid #8a89d8;background:#7978d6;color:#fff;border-radius:9px;padding:9px 13px;font-weight:720;font:inherit}
 .ssc-methods{display:flex;gap:8px;margin:16px 0}.ssc-methods button{flex:1;font-size:12px;padding:9px 6px}.ssc-methods .ssc-selected{background:#7978d6!important;border-color:#9c9bfd!important;color:#fff!important}.ssc-shell button.ssc-light,.ssc-staffbox button.ssc-light{background:#25324c;border-color:#49607d}.ssc-shell button:hover,.ssc-staffbox button:hover{filter:brightness(1.2)}
 .ssc-banned{color:#ff657b;font-weight:950;font-size:35px;letter-spacing:1px;text-align:center;margin:18px 0 8px}.ssc-user{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #33425c;padding:12px 0}
