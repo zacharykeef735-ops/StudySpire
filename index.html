@@ -1052,7 +1052,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
     let cachedWebLLMModule=null;
     async function importWebLLM(){
       if(cachedWebLLMModule)return cachedWebLLMModule;
-      const urls=["https://esm.run/@mlc-ai/web-llm","https://esm.sh/@mlc-ai/web-llm"];
+      const urls=["https://esm.run/@mlc-ai/web-llm@0.2.85","https://esm.sh/@mlc-ai/web-llm@0.2.85"];
       let lastError;
       // First-time CDN requests occasionally fail while caches are still warming.
       for(let attempt=1;attempt<=2;attempt++){
@@ -1171,7 +1171,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         if(/download stalled at 0%/i.test(detail))loadNeedsReload=true;
       }finally{
         if(monitor)clearInterval(monitor);
-        loading=false;if(button?.isConnected)button.disabled=loadNeedsReload;
+        loading=false;if(button?.isConnected){button.disabled=loadNeedsReload;if(loadNeedsReload){button.textContent='Refresh page to retry AI';button.title='A previous GPU download may still be running in the browser. Refresh first.'}}
       }
     });
 
@@ -1316,7 +1316,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
   const photoInput=$main('sdMiniFile'), preview=$main('sdMiniPreview'), previewImg=$main('sdMiniPreviewImg');
   const previewName=$main('sdMiniPreviewName'), removePhoto=$main('sdMiniRemoveImage');
   const floatBtn=$main('sdFloatMini'), subject=$main('sdMainSubject');
-  if(!launcher||!panel||!input||!send||!transcript)return;
+  if(!launcher||!panel||!input||!send||!transcript||!close||!hint||!statusBox||!subject||!photoInput||!preview||!previewImg||!previewName||!removePhoto||!floatBtn)return;
   let busy=false, imageData=null, imageName='', imageOCR=null, pipWindow=null;
   let messages=[];
   const subjectNames={allrounder:'Overall',english:'ELA AI',science:'Science AI',math:'Math AI',history:'History AI',coding:'Coding AI',languages:'Languages',study:'Study coach'};
