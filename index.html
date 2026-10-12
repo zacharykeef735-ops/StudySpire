@@ -2131,8 +2131,8 @@ if(suite){suite.showPane('welcome');syncNavigation('welcome')}
   if(topAccount){topAccount.onclick=()=>{const open=$('sdAccountOpen');if(open)open.click()};}
   function updateTopAccount(){
     if(!topLabel)return;
-    let account='';try{account=sessionStorage.getItem('studydoc-active-account')||''}catch(_){}
-    topLabel.textContent=account?'@'+account:'Sign in / Create account';
+    let account='',display='';try{account=sessionStorage.getItem('studydoc-active-account')||'';display=sessionStorage.getItem('ss-cloud-display-name')||''}catch(_){}
+    topLabel.textContent=account?(display?'@'+display:/^cloud[a-f0-9]{32}$/i.test(account)?'Cloud account':'@'+account):'Sign in / Create account';
   }
   updateTopAccount();
 })();
@@ -2375,6 +2375,6 @@ renderEverything();
 </script>
 <!-- Study Summit v3.77: username/password accounts; older email Owners retained -->
 <script src="cloud-config.js"></script>
-<script src="cloud.js?v=3.77.3"></script>
+<script src="cloud.js?v=3.77.4"></script>
 </body>
 </html>
