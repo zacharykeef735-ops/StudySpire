@@ -799,21 +799,21 @@ const STORAGE=sdAccountKey('studydock-simple-v1');
 const PROVIDERS={local:{label:'Browser tutor'}};
 const state={provider:'local',model:'',connected:false,models:[],mini:false,history:[],attachment:null,attachmentName:'',lastAnswer:'',lastQuestion:'',lastProvider:'',lastDraft:''};
 let toastTimer;
-function toast(msg){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',2800)}
-function status(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='status show '+type}
+function toast(msg){const t=$('toast');if(!t){console.info('StudySummit:',msg);return}t.textContent=msg;t.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>{if(t.isConnected)t.style.display='none'},2800)}
+function status(id,msg,type='info'){const el=$(id);if(!el){console.warn('StudySummit missing status target:',id,msg);return}el.textContent=msg;el.className='status show '+type}
 function clearStatus(id){const el=$(id);if(el){el.textContent='';el.className='status'}}
-function switchPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));$('crumbPage').textContent=({answer:'Ask a question',essay:'Essay writer',saved:'Saved work'})[page]||page;window.scrollTo({top:0,behavior:'smooth'});if(page==='saved')renderHistory()}
+function switchPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));const crumb=$('crumbPage');if(crumb)crumb.textContent=({answer:'Ask a question',essay:'Essay writer',saved:'Saved work'})[page]||page;window.scrollTo({top:0,behavior:'smooth'});if(page==='saved')renderHistory()}
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>switchPage(b.dataset.page)));
 function loadPrefs(){
- try{const d=JSON.parse(localStorage.getItem(STORAGE)||'{}');state.mini=true;state.history=Array.isArray(d.history)?d.history.slice(-80):[];}catch(e){}
+ try{const d=JSON.parse(localStorage.getItem(STORAGE)||'{}');state.mini=true;state.history=Array.isArray(d?.history)?d.history.filter(item=>item&&typeof item==='object'&&typeof item.content==='string').map(item=>({...item,title:String(item.title||'Saved work').slice(0,200),content:item.content.slice(0,100000),type:item.type==='essay'?'essay':'answer',created:String(item.created||'')})).slice(-80):[]}catch(e){state.history=[]}
  state.provider='local';state.model='';state.connected=false;
  updateMini();updateConnectionUI();renderHistory();updateWordStats();
 }
 function persist(){try{localStorage.setItem(STORAGE,JSON.stringify({mini:state.mini,history:state.history.slice(-80)}))}catch(e){toast('Browser storage is full. Export important notes.')}}
-function updateConnectionUI(){const on=!!state.connected;const label=on?'Browser tutor ready':'Load browser tutor';$('topMode').textContent=label;$('sideMode').textContent=label;$('topDot').classList.toggle('ok',on);$('sideDot').classList.toggle('ok',on)}
-function updateMini(){ $('miniEnabled').checked=state.mini;$('miniLauncher').classList.toggle('enabled',state.mini);if(!state.mini)closeMini() }
-function openSettings(){ $('settingsShade').classList.add('open');$('ssTabAI')?.focus({preventScroll:true});$('settingsShade').querySelector('.dialog').scrollTop=0 }
-function closeSettings(){ $('settingsShade').classList.remove('open') }
+function updateConnectionUI(){const on=!!state.connected,label=on?'Browser tutor ready':'Load browser tutor';for(const id of ['topMode','sideMode']){const node=$(id);if(node)node.textContent=label}for(const id of ['topDot','sideDot']){const node=$(id);if(node)node.classList.toggle('ok',on)}}
+function updateMini(){const toggle=$('miniEnabled'),launcher=$('miniLauncher');if(toggle)toggle.checked=state.mini;if(launcher)launcher.classList.toggle('enabled',state.mini);if(!state.mini&&$('miniPanel'))closeMini()}
+function openSettings(){const shade=$('settingsShade');if(!shade)return;shade.classList.add('open');$('ssTabAI')?.focus({preventScroll:true});const dialog=shade.querySelector('.dialog');if(dialog)dialog.scrollTop=0}
+function closeSettings(){const shade=$('settingsShade');if(shade)shade.classList.remove('open')}
 $('openSettings').onclick=openSettings;$('openSettingsSide').onclick=openSettings;$('openSettingsCard').onclick=openSettings;$('closeSettings').onclick=closeSettings;$('settingsShade').addEventListener('click',e=>{if(e.target===$('settingsShade'))closeSettings()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSettings()});
 window.SD_TUTOR_POLICY = `STUDY SUMMIT — TEACH-FIRST TUTOR POLICY (applies to the main tutor, Mini, chat history, topic lessons, and questions based on documents).
 You are a patient, encouraging, accurate teacher. Your purpose is to help a learner understand HOW to reach an answer, not to do assessed work for them. Match the explanation to their selected subject and education level. Keep the tone natural, direct, and respectful; never talk down to the learner.
@@ -937,19 +937,20 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
 </style>
 <script>
 (function () {
+  // IDs checked against WebLLM's supported prebuiltAppConfig model list.
   const MODEL_CATALOG = {
-    "Qwen2.5-0.5B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 0.5B", tier: "Fastest", detail: "Quick everyday questions; smallest option" },
-    "Llama-3.2-1B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 1B", tier: "Fast", detail: "Good lightweight general assistant" },
-    "Qwen2.5-1.5B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 1.5B", tier: "Balanced", detail: "Stronger general explanations; slower to load" },
-    "Qwen2.5-Math-1.5B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 Math 1.5B", tier: "Balanced · Math", detail: "Specialized for math problems" },
-    "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 Coder 1.5B", tier: "Balanced · Coding", detail: "Specialized for code and debugging" },
-    "Qwen2.5-3B-Instruct-q4f16_1-MLC": { label: "Qwen 2.5 3B", tier: "More capable · Slower", detail: "More detailed general answers; larger download" },
-    "Llama-3.2-3B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 3B", tier: "More capable · Slower", detail: "Larger general assistant; needs more memory" }
+    "SmolLM2-360M-Instruct-q4f32_1-MLC": { label: "SmolLM2 360M", tier: "Fastest · small", detail: "Quick, basic hints for low-memory devices" },
+    "Llama-3.2-1B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 1B", tier: "Fast · recommended", detail: "Good everyday study tutoring" },
+    "Llama-3.2-1B-Instruct-q4f32_1-MLC": { label: "Llama 3.2 1B · compatibility", tier: "Fast · more memory", detail: "Alternative when the recommended version is incompatible" },
+    "SmolLM2-1.7B-Instruct-q4f32_1-MLC": { label: "SmolLM2 1.7B", tier: "Balanced", detail: "More detailed responses; needs more device memory" },
+    "Llama-3.2-3B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 3B", tier: "More capable · slower", detail: "Detailed general explanations; larger download" }
   };
-  const DEFAULT_MODEL_ID = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+  const DEFAULT_MODEL_ID = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
   let localEngine = null;
   let loadedModelId = null;
   let loading = false;
+  let loadGeneration = 0;
+  let loadNeedsReload = false;
 
   function savedModelChoice() {
     try {
@@ -1005,29 +1006,18 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       <div class="fieldgroup">
         <label class="label" for="localModelChoice">AI model · grouped by speed and specialty</label>
         <select id="localModelChoice" class="field">
-          <optgroup label="⚡ FASTEST — small download">
-            <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B — quick questions</option>
-          </optgroup>
-          <optgroup label="🚀 FAST — lightweight general AI">
-            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B — general assistant</option>
-          </optgroup>
-          <optgroup label="⚖️ BALANCED — general + subject specialists">
-            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B — balanced general model</option>
-            <option value="Qwen2.5-Math-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 Math 1.5B — math specialist</option>
-            <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 Coder 1.5B — coding specialist</option>
-          </optgroup>
-          <optgroup label="🧠 MORE CAPABLE — slower / more memory">
-            <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B — stronger general answers</option>
-            <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B — larger general assistant</option>
-          </optgroup>
+          <optgroup label="⚡ FASTEST — smaller download"><option value="SmolLM2-360M-Instruct-q4f32_1-MLC">SmolLM2 360M — smallest model</option></optgroup>
+          <optgroup label="🚀 FAST — general tutoring"><option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B — recommended</option><option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">Llama 3.2 1B — compatibility option</option></optgroup>
+          <optgroup label="⚖️ BALANCED — more detail"><option value="SmolLM2-1.7B-Instruct-q4f32_1-MLC">SmolLM2 1.7B — balanced</option></optgroup>
+          <optgroup label="🧠 MORE CAPABLE — bigger download"><option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B — stronger general answers</option></optgroup>
         </select>
-        <div class="fieldgroup"><label class="label" for="ssTutorSpeed">Tutor response speed</label><select id="ssTutorSpeed" class="field"><option value="fast">Fast — brief hints (recommended)</option><option value="balanced">Balanced — a little more detail</option><option value="detailed">Detailed — slower explanations</option></select><div class="hint">Fast mode uses fewer words and less conversation history. Model size still determines most of the speed.</div></div><div class="hint" id="modelDetailHint">Choose by speed or specialty. Recommended all-rounder: Qwen 2.5 3B, if your device has enough memory. Switching models requires a separate first download; browser cache may speed up later launches. Requires WebGPU. These models are text-only and cannot inspect worksheet images.</div>
+        <div class="fieldgroup"><label class="label" for="ssTutorSpeed">Tutor response speed</label><select id="ssTutorSpeed" class="field"><option value="fast">Fast — brief hints (recommended)</option><option value="balanced">Balanced — a little more detail</option><option value="detailed">Detailed — slower explanations</option></select><div class="hint">Fast mode uses fewer words and less conversation history. Model size still determines most of the speed.</div></div><div class="hint" id="modelDetailHint">Choose by speed or specialty. Recommended all-rounder: Llama 3.2 1B on most devices, or Llama 3.2 3B on stronger hardware. Switching models requires a separate first download; browser cache may speed up later launches. Requires WebGPU. These models are text-only and cannot inspect worksheet images.</div>
       </div>
       <div class="row">
         <button class="btn primary" id="loadLocalModel" type="button">⬇ Load browser AI</button>
         <button class="btn ghost" id="unloadLocalModel" type="button">Disconnect</button>
       </div>
-      <div id="localModelStatus" class="status show info" role="status" aria-live="polite">Model not loaded. Loading requires internet for the first download.</div><details id="localModelHelp" style="margin-top:8px"><summary style="cursor:pointer;color:#b5c5f4;font-size:12px">AI stuck at 0%? Troubleshooting</summary><p class="hint" style="margin:8px 0">A first-time model download can take several minutes, especially on slower connections. Browser AI needs WebGPU and access to external model downloads. Try Chrome or Edge with graphics acceleration enabled, a different connection if school Wi-Fi blocks downloads, and the Qwen 2.5 0.5B model. Reload this page before retrying a stalled download. It runs locally; no API key is required.</p></details>
+      <div id="localModelStatus" class="status show info" role="status" aria-live="polite">Model not loaded. Loading requires internet for the first download.</div><details id="localModelHelp" style="margin-top:8px"><summary style="cursor:pointer;color:#b5c5f4;font-size:12px">AI stuck at 0%? Troubleshooting</summary><p class="hint" style="margin:8px 0">A first-time model download can take several minutes, especially on slower connections. Browser AI needs WebGPU and access to external model downloads. Try Chrome or Edge with graphics acceleration enabled, a different connection if school Wi-Fi blocks downloads, and the SmolLM2 360M model. Reload this page before retrying a stalled download. It runs locally; no API key is required.</p></details>
     `;
     (el("ssPanelAI")||dialogBody).prepend(panel);
 
@@ -1038,10 +1028,31 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       try { return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms)})]); }
       finally {clearTimeout(timer)}
     }
+    // Never leave the Load button spinning forever if a network host is stalled.
+    // WebLLM's factory cannot cancel an in-flight GPU initialization, so dispose
+    // of late-completing engines and ask for a reload after a hard stall.
+    async function loadWithWatchdog(task, stalled) {
+      let timer, expired=false;
+      const active=Promise.resolve().then(task);
+      active.then(engine=>{
+        if(expired&&engine?.unload)Promise.resolve().then(()=>engine.unload()).catch(()=>{});
+      },()=>{});
+      const timeout=new Promise((_,reject)=>{
+        timer=setInterval(()=>{
+          if(stalled()){
+            expired=true;
+            clearInterval(timer);
+            reject(new Error("The AI model download stalled at 0% for over 4 minutes. Reload the page, choose the smallest model, and check network access to the model host."));
+          }
+        },10000);
+      });
+      try { return await Promise.race([active,timeout]) }
+      finally {clearInterval(timer)}
+    }
     let cachedWebLLMModule=null;
     async function importWebLLM(){
       if(cachedWebLLMModule)return cachedWebLLMModule;
-      const urls=["https://esm.run/@mlc-ai/web-llm","https://esm.sh/@mlc-ai/web-llm"];
+      const urls=["https://esm.run/@mlc-ai/web-llm@0.2.85","https://esm.sh/@mlc-ai/web-llm@0.2.85"];
       let lastError;
       // First-time CDN requests occasionally fail while caches are still warming.
       for(let attempt=1;attempt<=2;attempt++){
@@ -1060,8 +1071,9 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       throw new Error("Could not download the browser AI library after retrying. "+(lastError?.message||"Check your connection or blockers."));
     }
     el("loadLocalModel").addEventListener("click", async function () {
-      if (loading) return;
+      if (loading||loadNeedsReload) return;
       loading = true;
+      const generation=++loadGeneration;
       const button = el("loadLocalModel");
       button.disabled = true;
       let monitor=null;
@@ -1073,8 +1085,8 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         const adapter=await withDeadline(navigator.gpu.requestAdapter(),15000,"Graphics check timed out");
         if(!adapter)throw new Error("No compatible WebGPU graphics adapter was found. Enable hardware acceleration in Chrome/Edge settings, restart the browser, and try again.");
         const modelSelect = el("localModelChoice");
-        const chosenModelId = modelSelect && MODEL_CATALOG[modelSelect.value] ? modelSelect.value : DEFAULT_MODEL_ID;
-        const chosenModel = MODEL_CATALOG[chosenModelId];
+        let chosenModelId = modelSelect && MODEL_CATALOG[modelSelect.value] ? modelSelect.value : DEFAULT_MODEL_ID;
+        let chosenModel = MODEL_CATALOG[chosenModelId];
         try { localStorage.setItem(sdAccountKey("studydockLocalModel"), chosenModelId); } catch (_) {}
         if (localEngine && loadedModelId === chosenModelId) {
           setConnected(true);setStatus(chosenModel.label+" is already loaded and ready.","good");return;
@@ -1085,14 +1097,26 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         }
         setStatus("Step 2/3 · Connecting to the model library…","info");
         const module=await importWebLLM();
+        if(generation!==loadGeneration)return;
         const known=Array.isArray(module.prebuiltAppConfig?.model_list)?module.prebuiltAppConfig.model_list:[];
-        if(known.length&&!known.some(m=>m.model_id===chosenModelId)){
-          throw new Error(chosenModel.label+" is not offered by this version of WebLLM. Try Qwen 2.5 0.5B or Llama 3.2 1B.");
+        if(!known.length)throw new Error("The WebLLM model catalog is unavailable. Refresh StudySummit and retry.");
+        const supported=(id)=>{
+          const candidate=known.find(m=>m?.model_id===id);
+          return !!candidate && (!Array.isArray(candidate.required_features)||candidate.required_features.every(feature=>adapter.features?.has(feature)));
+        };
+        if(!supported(chosenModelId)){
+          const fallback=[DEFAULT_MODEL_ID,"SmolLM2-360M-Instruct-q4f32_1-MLC","Llama-3.2-1B-Instruct-q4f32_1-MLC",...Object.keys(MODEL_CATALOG)].find(supported);
+          if(!fallback)throw new Error("This WebGPU adapter does not support any of the installed model options. Check graphics acceleration and browser compatibility.");
+          chosenModelId=fallback;
+          chosenModel=MODEL_CATALOG[fallback];
+          if(modelSelect)modelSelect.value=fallback;
+          try{localStorage.setItem(sdAccountKey("studydockLocalModel"),fallback)}catch(_){}
+          setStatus("The selected model is unavailable or needs unsupported GPU features. Switching to "+chosenModel.label+"…","warn");
         }
         setStatus("Step 3/3 · Preparing "+chosenModel.label+". First use downloads model files; this may take several minutes.","info");
         let progress=0,progressAt=Date.now(),lastReport="Preparing model download";
         monitor=setInterval(()=>{
-          if(!loading)return;
+          if(!loading||generation!==loadGeneration)return;
           const seconds=Math.round((Date.now()-progressAt)/1000);
           if(seconds>=120&&progress<0.01){
             setStatus("Still at 0% after "+seconds+" seconds. Model files may be blocked or the download is stalled. Try another network, disable a blocking extension for this site, or reload and choose a different model.","warn");
@@ -1106,24 +1130,30 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         let engine=null;
         for(let attempt=1;attempt<=2;attempt++){
           try{
-            engine=await module.CreateMLCEngine(chosenModelId,{
+            engine=await loadWithWatchdog(()=>module.CreateMLCEngine(chosenModelId,{
               initProgressCallback:report=>{
+                if(generation!==loadGeneration)return;
                 const fraction=Number(report?.progress);
                 if(Number.isFinite(fraction)&&fraction>progress){progress=fraction;progressAt=Date.now()}
                 lastReport=String(report?.text||"Loading model…").slice(0,380);
                 const pct=Number.isFinite(fraction)?" ("+Math.round(Math.max(0,Math.min(1,fraction))*100)+"%)":"";
                 setStatus(lastReport+pct,"info");
               }
-            });
+            }),()=>generation===loadGeneration&&progress<0.01&&Date.now()-progressAt>240000);
             break;
           }catch(loadError){
             const reason=String(loadError?.message||loadError);
-            // Errors involving unavailable GPU support, model IDs or memory aren't transient.
-            if(attempt===2||/out.of.memory|device.lost|unsupported|not.found|404|invalid.model|shader.validation|allocation.failed/i.test(reason))throw loadError;
+            // Retrying a GPU failure or stalled operation can exhaust graphics memory.
+            if(generation!==loadGeneration||attempt===2||/out.of.memory|device.lost|unsupported|not.found|404|invalid.model|shader.validation|allocation.failed|webgpu|gpuerror|stalled at 0%/i.test(reason))throw loadError;
             progress=0;progressAt=Date.now();lastReport="Retrying model download";
             setStatus("The first model download failed. Retrying automatically (2/2)…","warn");
             await new Promise(resolve=>setTimeout(resolve,1800));
           }
+        }
+        if(generation!==loadGeneration){
+          try{await engine?.unload?.()}catch(_){}
+          setStatus("Browser AI loading stopped.","info");
+          return;
         }
         localEngine=engine;loadedModelId=chosenModelId;
         setConnected(true);
@@ -1132,14 +1162,25 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       }catch(err){
         setConnected(false);
         const detail=err?.message||String(err);
-        setStatus("Browser AI could not load: "+detail+" Try the smallest Qwen 2.5 0.5B model, verify Chrome/Edge hardware acceleration, and check that downloads from Hugging Face are allowed.","bad");
+        if(generation!==loadGeneration){
+          setStatus("Browser AI loading stopped. Reload if the browser is still freeing GPU memory.","info");
+        }else{
+          console.error("StudySummit AI model initialization failed:",err);
+          setStatus("Browser AI could not load: "+detail+" Try SmolLM2 360M, check Chrome/Edge graphics acceleration, and allow Hugging Face model downloads.","bad");
+        }
+        if(/download stalled at 0%/i.test(detail))loadNeedsReload=true;
       }finally{
         if(monitor)clearInterval(monitor);
-        loading=false;button.disabled=false;
+        loading=false;if(button?.isConnected){button.disabled=loadNeedsReload;if(loadNeedsReload){button.textContent='Refresh page to retry AI';button.title='A previous GPU download may still be running in the browser. Refresh first.'}}
       }
     });
 
     el("unloadLocalModel").addEventListener("click", async function () {
+      ++loadGeneration;
+      if(loading){
+        setStatus("Cancelling AI startup; please wait for the active download to finish or refresh to stop it.","warn");
+        return;
+      }
       try { if (localEngine && typeof localEngine.unload === "function") await localEngine.unload(); } catch (_) {}
       localEngine = null;
       loadedModelId = null;
@@ -1275,7 +1316,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
   const photoInput=$main('sdMiniFile'), preview=$main('sdMiniPreview'), previewImg=$main('sdMiniPreviewImg');
   const previewName=$main('sdMiniPreviewName'), removePhoto=$main('sdMiniRemoveImage');
   const floatBtn=$main('sdFloatMini'), subject=$main('sdMainSubject');
-  if(!launcher||!panel||!input||!send||!transcript)return;
+  if(!launcher||!panel||!input||!send||!transcript||!close||!hint||!statusBox||!subject||!photoInput||!preview||!previewImg||!previewName||!removePhoto||!floatBtn)return;
   let busy=false, imageData=null, imageName='', imageOCR=null, pipWindow=null;
   let messages=[];
   const subjectNames={allrounder:'Overall',english:'ELA AI',science:'Science AI',math:'Math AI',history:'History AI',coding:'Coding AI',languages:'Languages',study:'Study coach'};

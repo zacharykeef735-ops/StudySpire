@@ -169,7 +169,11 @@ StudySummit includes an optional browser-based AI assistant using `@mlc-ai/web-l
 4. Watch the progress/status messages and wait for the model to initialize.
 5. Ask a question once the model is ready.
 
-The loader uses backup module sources and automatically retries certain first-download or model-initialization failures. Permanent errors (such as unsupported GPU capabilities or insufficient device memory) may require changing browsers or hardware. The AI is **experimental**, and real-device compatibility is not guaranteed.
+The loader pins **WebLLM 0.2.85** and uses backup CDN sources. The supported built-in options include **SmolLM2 360M**, **Llama 3.2 1B** (default), **SmolLM2 1.7B**, and **Llama 3.2 3B**. Earlier Qwen 2.5 selections were removed because they are not present in this WebLLM version's built-in model list. The loader falls back to a compatible supported model if a saved choice is no longer available.
+
+Temporary library/download errors may retry automatically; GPU device or memory failures are not retried in a loop. If the download stays at 0% for over four minutes, StudySummit stops waiting and asks you to **refresh the page before trying again**, to avoid overlapping GPU downloads. If it reports that WebGPU is unavailable, enabling browser graphics acceleration or using another supported browser/device may be necessary.
+
+The AI is **experimental** and a full real-device model download has not yet been verified.
 
 Browser AI model loading is separate from Supabase username authentication; cloud sign-in is not what downloads the model.
 
@@ -242,6 +246,8 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
 | `role-permissions-recovery-migration.sql` | Role restrictions and Owner-reviewed password recovery RPCs, now using 6-digit codes. |
 | `six-digit-recovery-codes-migration.sql` | Incremental update to shorter codes for existing installations. |
 | `README.md` | Project overview, user instructions, setup, architecture, and troubleshooting. |
+| `tests/browser-ai-smoke.test.cjs` | Dependency-free smoke tests for startup crashes, model catalog and model-selection fallback. |
+| `.github/workflows/browser-ai-smoke.yml` | Runs these regression tests on pull requests and main. |
 
 ## Security and limitations
 
@@ -266,9 +272,19 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
 | **Recovery request not visible** | Confirm the request was made while signed out, an Owner is logged in, and the newest recovery migration is installed. |
 | **Recovery code rejected** | Check username and all six digits, expiry (15 minutes), five-attempt limit, and whether the code has already been used. |
 | **Cloud sync fails** | Check the Supabase URL/key, network connection, active session, SQL policies, and browser console. Export a backup before troubleshooting. |
-| **AI stuck or download fails** | Check WebGPU support, device memory, connection, browser console, and available model. Temporary failures may retry automatically. |
+| **AI stuck or download fails** | Use **SmolLM2 360M** as the smallest option; check WebGPU support, hardware acceleration, device memory, network access to Hugging Face, and browser console. For a 0% stall that times out, reload the page before retrying. The console retains the original error. |
 | **Website shows old version** | Check GitHub Pages deployment and perform a hard refresh to clear cached assets. |
 | **Database RPC/function missing** | Check the migration order and Supabase SQL Editor errors. Do not reapply older migrations over newer ones without reviewing them. |
+
+## Developer regression checks
+
+The codebase includes dependency-free smoke tests for missing DOM elements, corrupted locally saved history, supported model IDs, and model fallback behavior. Run them with Node.js 22 or newer:
+
+```sh
+node --test tests/browser-ai-smoke.test.cjs
+```
+
+The GitHub workflow runs these tests on pull requests and updates to `main`. These tests do **not** replace an actual WebGPU download on a physical GPU.
 
 ## Useful documentation
 
