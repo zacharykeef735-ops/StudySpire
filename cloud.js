@@ -37,7 +37,7 @@ function showGate(kind='login'){
   <div id="ssc-emailRow" hidden><label for="ssc-email">Email address</label><input type="email" id="ssc-email" autocomplete="email" placeholder="you@example.com" maxlength="150"/></div>
   <label for="ssc-pass">Password</label><input id="ssc-pass" type="password" autocomplete="current-password" placeholder="At least 10 characters for new accounts" minlength="8"/><button id="ssc-showpass" type="button" class="ssc-light ssc-password-toggle" aria-pressed="false" aria-controls="ssc-pass">Show password</button>
   <div id="ssc-nameRow" hidden><label for="ssc-name">Username for older email account</label><input id="ssc-name" placeholder="Choose a username" maxlength="32" autocomplete="username"/></div>
-  <div class="ssc-row"><button id="ssc-login" type="button">Sign in</button><button id="ssc-register" type="button" class="ssc-light">Create account</button></div>
+  <div class="ssc-row"><button id="ssc-login" type="button">Sign in</button><button id="ssc-register" type="button" class="ssc-light">Create account</button></div><button id="ssc-forgot" class="ssc-light ssc-forgot" type="button">Forgot password? Owner-assisted reset</button><div id="ssc-recovery" hidden><p class="ssc-caption">A verified account holder can request a one-time code from an Owner. Your replacement password is only entered here.</p><label for="ssc-resetUser">Username</label><input id="ssc-resetUser" autocomplete="username" maxlength="32" placeholder="Username"/><button id="ssc-requestReset" class="ssc-light" type="button">Request reset</button><label for="ssc-resetCode">Recovery code</label><input id="ssc-resetCode" autocomplete="off" maxlength="32" placeholder="32-character code"/><label for="ssc-newPassword">New password</label><input id="ssc-newPassword" autocomplete="new-password" type="password" placeholder="At least 10 characters"/><div class="ssc-row"><button id="ssc-completeReset" type="button">Set new password</button><button id="ssc-cancelReset" class="ssc-light" type="button">Back to sign in</button></div></div>
   <p id="ssc-recoveryInfo" class="ssc-caption">No email needed for new username accounts. Save your password: self-service password recovery isn't available yet. Owner-assisted recovery is not implemented.</p>
   <p class="ssc-caption">Older Supabase email/Owner accounts remain available via “Older email account.” Browser-only accounts are separate.</p>
  </div>
@@ -80,6 +80,16 @@ function showGate(kind='login'){
    cloudNotice('Creating older-style account…');const {data,error}=await client.auth.signUp({email,password,options:{data:{username},emailRedirectTo:location.origin+location.pathname}});
    if(error)return cloudNotice(error.message);if(data.session){cloudNotice('Account created. Signing in…');await boot()}else cloudNotice('Check your email to confirm the account, then return here and sign in.');
  };
+ $('ssc-forgot').onclick=()=>{const panel=$('ssc-recovery');panel.hidden=!panel.hidden;if(!panel.hidden){$('ssc-resetUser').value=$('ssc-user').value.trim().toLowerCase();$('ssc-resetUser').focus()}};
+ $('ssc-cancelReset').onclick=()=>{$('ssc-recovery').hidden=true;$('ssc-newPassword').value='';$('ssc-resetCode').value=''};
+ $('ssc-requestReset').onclick=async()=>{const btn=$('ssc-requestReset');btn.disabled=true;try{await ensureAnonymous();const {error}=await client.rpc('ss_request_password_reset',{chosen_username:$('ssc-resetUser').value.trim().toLowerCase()});if(error)throw error;cloudNotice('If the username exists, the request was submitted. Contact an Owner for identity verification and a recovery code.')}catch(e){cloudNotice('Reset request failed: '+(e.message||e))}finally{btn.disabled=false}};
+ $('ssc-completeReset').onclick=async()=>{const username=$('ssc-resetUser').value.trim().toLowerCase(),code=$('ssc-resetCode').value.trim().toUpperCase(),password=$('ssc-newPassword').value;
+  if(!/^[a-z0-9_-]{3,32}$/.test(username)||!/^[A-F0-9]{32}$/.test(code))return cloudNotice('Enter a valid username and 32-character recovery code.');
+  if(password.length<10||new TextEncoder().encode(password).length>72)return cloudNotice('Password must be 10 characters minimum, 72 bytes maximum.');
+  const btn=$('ssc-completeReset');btn.disabled=true;try{await ensureAnonymous();const {data,error}=await client.rpc('ss_complete_password_reset',{chosen_username:username,recovery_code:code,new_password:password});if(error)throw error;
+   if(data!==true)return cloudNotice('Invalid, expired or used recovery code.');
+   $('ssc-newPassword').value='';$('ssc-resetCode').value='';$('ssc-recovery').hidden=true;$('ssc-user').value=username;cloudNotice('Password updated. Sign in with your new password.');
+  }catch(e){cloudNotice('Reset failed: '+(e.message||e))}finally{btn.disabled=false}};
  $('ssc-login').onclick=async()=>{
    const password=$('ssc-pass').value;
    if(authMethod==='username'){
@@ -175,8 +185,14 @@ async function refreshProfile(){if(!person)return false;const {data,error}=await
  try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
 function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log){log.textContent='Sign out';log.style.display='inline-flex';log.hidden=false;}
- const owner=role==='owner',staff=owner||role==='admin'||role==='moderator';
- for(const id of ['ssCloudStaffBtn','ssCloudOwnerTop','ssCloudOwnerNav','ssCloudOwnerQuick']){const btn=$(id);if(!btn)continue;btn.hidden=!staff;if(id!=='ssCloudOwnerNav'&&id!=='ssCloudOwnerQuick')btn.textContent=owner?'👑 Owner Dashboard':'⚑ Staff Dashboard';if(id==='ssCloudOwnerNav'){const name=btn.querySelector('.sd-navtext');if(name)name.textContent=owner?'👑 Owner Dashboard':'⚑ Staff Dashboard'}}
+ const names={owner:'👑 Owner Dashboard',admin:'🛡 Admin Dashboard',moderator:'⚑ Moderator Dashboard'};
+ const staff=Boolean(names[role]),label=names[role]||'Study Summit';
+ for(const id of ['ssCloudStaffBtn','ssCloudOwnerTop','ssCloudOwnerNav','ssCloudOwnerQuick']){
+  const btn=$(id);if(!btn)continue;btn.hidden=!staff;
+  if(id==='ssCloudOwnerNav'){const name=btn.querySelector('.sd-navtext');if(name)name.textContent=label}
+  else if(id==='ssCloudOwnerQuick')btn.innerHTML='<span>⚙</span> '+label;
+  else btn.textContent=label;
+ }
  if(!staff&&$('ssCloudStaffDialog'))$('ssCloudStaffDialog').hidden=true;
 }
 function installOwnerNavigation(){
@@ -264,19 +280,24 @@ async function rpc(name,args){const {data,error}=await client.rpc(name,args||{})
 async function openStaff(){if(!person||!['owner','admin','moderator'].includes(role)||banned(profile))return;
  if(!await refreshProfile()||!['owner','admin','moderator'].includes(role)||banned(profile))return;
  let modal=$('ssCloudStaffDialog');if(!modal){modal=document.createElement('div');modal.id='ssCloudStaffDialog';document.body.append(modal)}
+ const canAccounts=role==='owner'||role==='admin',canAudit=canAccounts,canRecover=role==='owner';
+ const names={owner:'👑 Owner Dashboard',admin:'🛡 Admin Dashboard',moderator:'⚑ Moderator Dashboard'};
  modal.hidden=false;modal.innerHTML=`<div class="ssc-staffbox ss-owner-classic" role="dialog" aria-modal="true" aria-labelledby="ssCloudAdminTitle" tabindex="-1">
- <div class="ssc-title-row ss-owner-heading"><div><div class="eyebrow">${role==='owner'?'OWNER CONTROL CENTER':'STAFF CONTROL CENTER'}</div><h2 id="ssCloudAdminTitle">${role==='owner'?'👑 Owner Dashboard':'⚑ Staff Dashboard'}</h2><p class="ssc-muted">Study Summit · Account administration and moderation</p></div><button id="ssCloudStaffClose" class="ssc-light" type="button">✕ Close</button></div>
- <div id="ssCloudAdminSummary" class="ssc-admin-summary"></div><nav class="ssc-staff-tabs" aria-label="Dashboard sections"><button type="button" class="ssc-current" data-staff-tab="accounts">👥 Accounts &amp; roles</button><button type="button" data-staff-tab="reports">⚑ Reports</button><button type="button" data-staff-tab="history">◷ Action history</button></nav>
+ <div class="ssc-title-row ss-owner-heading"><div><div class="eyebrow">${role.toUpperCase()+' CONTROL CENTER'}</div><h2 id="ssCloudAdminTitle">${names[role]}</h2><p class="ssc-muted">Study Summit · Account administration and moderation</p></div><button id="ssCloudStaffClose" class="ssc-light" type="button">✕ Close</button></div>
+ <div id="ssCloudAdminSummary" class="ssc-admin-summary"></div><nav class="ssc-staff-tabs" aria-label="Dashboard sections"><button data-staff-tab="accounts" ${canAccounts?'':'hidden'} type="button">👥 Accounts &amp; roles</button><button data-staff-tab="reports" type="button">⚑ Reports</button><button data-staff-tab="history" ${canAudit?'':'hidden'} type="button">◷ Action history</button><button data-staff-tab="recovery" ${canRecover?'':'hidden'} type="button">🔐 Password recovery</button></nav>
  <div id="ssCloudStaffMsg" role="status" aria-live="polite"></div>
- <section class="ssc-admin-section" data-staff-pane="accounts"><h3>Account management &amp; permissions</h3><p class="ssc-muted">Manage Students, Moderators, Admins and multiple Owners. Every Owner has full control. At least one Owner must remain.</p>
+ <section class="ssc-admin-section" data-staff-pane="accounts" ${canAccounts?'':'hidden'}><h3>Account management &amp; permissions</h3><p class="ssc-muted">${role==='owner'?'Manage all roles, including Owners. At least one Owner must remain.':'Moderate Students and Moderators. Only Owners can assign roles.'}</p>
  <div class="ssc-role-manager" id="ssCloudRoleTools" hidden><label for="ssCloudTargetUser">Assign or change a role</label><div class="ssc-admin-tools"><select id="ssCloudTargetUser" aria-label="Select account"></select><select id="ssCloudTargetRole" aria-label="Choose role"><option value="student">Student</option><option value="moderator">Moderator</option><option value="admin">Admin</option><option value="owner">👑 Owner · full access</option></select><button id="ssCloudApplyRole" type="button">Apply role</button></div><small>Create each username account normally, then promote it to Owner here. The promoted Owner receives full administrative access, including managing other Owners.</small></div>
  <div class="ssc-admin-tools"><input id="ssCloudAccountSearch" type="search" placeholder="Search accounts or roles…" aria-label="Search accounts"/><select id="ssCloudAccountFilter" aria-label="Filter accounts"><option value="all">All accounts</option><option value="active">Active</option><option value="banned">Banned</option><option value="staff">Staff</option></select><button id="ssCloudRefresh" class="ssc-light" type="button">↻ Refresh</button></div><div id="ssCloudStaffUsers"></div></section>
  <section class="ssc-admin-section" data-staff-pane="reports" hidden><div class="ssc-title-row"><h3>Reports inbox</h3><button class="ssc-light" id="ssCloudExportReports" type="button">↓ Export reports</button></div><div class="ssc-admin-tools"><select id="ssCloudReportFilter" aria-label="Filter reports"><option value="open">Open reports</option><option value="all">All reports</option><option value="reviewed">Reviewed reports</option></select><input id="ssCloudReportSearch" type="search" placeholder="Search reports…" aria-label="Search reports"/></div><div id="ssCloudStaffReports"></div></section>
- <section class="ssc-admin-section" data-staff-pane="history" hidden><div class="ssc-title-row"><h3>Admin action history</h3><button class="ssc-light" id="ssCloudExportAudit" type="button">↓ Export history</button></div><div id="ssCloudStaffAudit"></div></section></div>`;
+ <section class="ssc-admin-section" data-staff-pane="history" hidden><div class="ssc-title-row"><h3>Admin action history</h3><button class="ssc-light" id="ssCloudExportAudit" type="button">↓ Export history</button></div><div id="ssCloudStaffAudit"></div></section><section class="ssc-admin-section" data-staff-pane="recovery" hidden><h3>Password recovery requests</h3><p class="ssc-muted">Verify the requester independently first. Only issue a code to the verified account holder. Never ask for their password.</p><button class="ssc-light" id="ssCloudRefreshRecovery" type="button">↻ Refresh requests</button><div id="ssCloudRecoveryRequests"></div></section></div>`;
  $('ssCloudStaffClose').onclick=()=>modal.hidden=true;
  modal.onclick=e=>{if(e.target===modal)modal.hidden=true};
  modal.onkeydown=e=>{if(e.key==='Escape')modal.hidden=true};
- modal.querySelectorAll('[data-staff-tab]').forEach(tab=>{tab.onclick=()=>{modal.querySelectorAll('[data-staff-tab]').forEach(other=>{const active=other===tab;other.classList.toggle('ssc-current',active);other.setAttribute('aria-current',active?'page':'false')});modal.querySelectorAll('[data-staff-pane]').forEach(pane=>pane.hidden=pane.dataset.staffPane!==tab.dataset.staffTab)}});
+ const firstTab=modal.querySelector('[data-staff-tab]:not([hidden])');
+ if(firstTab){firstTab.classList.add('ssc-current');modal.querySelectorAll('[data-staff-pane]').forEach(pane=>pane.hidden=pane.dataset.staffPane!==firstTab.dataset.staffTab)}
+ modal.querySelectorAll('[data-staff-tab]:not([hidden])').forEach(tab=>{tab.onclick=()=>{modal.querySelectorAll('[data-staff-tab]').forEach(other=>{const selected=other===tab;other.classList.toggle('ssc-current',selected);other.setAttribute('aria-current',selected?'page':'false')});modal.querySelectorAll('[data-staff-pane]').forEach(pane=>pane.hidden=pane.dataset.staffPane!==tab.dataset.staffTab);if(tab.dataset.staffTab==='recovery')renderRecovery().catch(e=>staffMsg(e.message))}});
+ $('ssCloudRefreshRecovery').onclick=()=>renderRecovery().catch(e=>staffMsg(e.message));
  $('ssCloudApplyRole').onclick=async()=>{const id=$('ssCloudTargetUser').value,newRole=$('ssCloudTargetRole').value;const user=staffData.users.find(item=>item.id===id);
  if(role!=='owner'||!user||user.id===person?.id)return staffMsg('Choose an account other than your own.');
  if(user.role===newRole)return staffMsg('@'+user.username+' already has this role.');
@@ -295,6 +316,29 @@ async function openStaff(){if(!person||!['owner','admin','moderator'].includes(r
  $('ssCloudExportAudit').onclick=()=>download('study-summit-admin-audit-'+Date.now()+'.json',{exported:new Date().toISOString(),actions:staffData.audit});
  modal.querySelector('.ssc-staffbox').focus();
  renderStaff().catch(e=>staffMsg(e.message));}
+async function renderRecovery(){
+ if(role!=='owner'||!await refreshProfile()||role!=='owner')throw Error('Owner only');
+ const requests=await rpc('ss_owner_reset_requests'),container=$('ssCloudRecoveryRequests');if(!container)return;
+ container.replaceChildren();if(!requests?.length){container.textContent='No pending password recovery requests.';return}
+ for(const req of requests){
+  const row=document.createElement('div');row.className='ssc-recovery-row';
+  const heading=document.createElement('strong');heading.textContent='@'+req.username+' · '+req.status;row.append(heading);
+  const date=document.createElement('small');date.textContent=new Date(req.created_at).toLocaleString();row.append(date);
+  const buttons=document.createElement('div');buttons.className='ssc-row';
+  const issue=document.createElement('button');issue.textContent='Issue one-time code';
+  issue.onclick=async()=>{if(!confirm('Have you independently verified that this is the rightful owner of @'+req.username+'? Issuing a code enables password replacement.'))return;
+   issue.disabled=true;try{const code=String(await rpc('ss_owner_issue_password_reset',{reset_request_id:req.request_id}));
+    const secret=document.createElement('div');secret.className='ssc-recovery-code';
+    const note=document.createElement('p');note.textContent='Show once; expires in 1 hour. Privately share with the verified requester.';
+    const value=document.createElement('code');value.textContent=code;
+    const copy=document.createElement('button');copy.className='ssc-light';copy.textContent='Copy code';copy.onclick=()=>navigator.clipboard.writeText(code).catch(()=>staffMsg('Clipboard unavailable. Copy manually.'));
+    secret.append(note,value,copy);row.append(secret);staffMsg('Code issued for @'+req.username+'.');
+   }catch(e){staffMsg(e.message)}finally{issue.disabled=false}};
+  const deny=document.createElement('button');deny.className='ssc-light';deny.textContent='Deny request';
+  deny.onclick=async()=>{if(!confirm('Deny recovery for @'+req.username+'?'))return;deny.disabled=true;try{await rpc('ss_owner_deny_password_reset',{reset_request_id:req.request_id});await renderRecovery();staffMsg('Request denied.')}catch(e){staffMsg(e.message)}finally{deny.disabled=false}};
+  buttons.append(issue,deny);row.append(buttons);container.append(row)
+ }
+}
 let staffData={users:[],reports:[],audit:[]};
 function staffMsg(message){if($('ssCloudStaffMsg'))$('ssCloudStaffMsg').textContent=message}
 function applyStaffFilters(){
@@ -304,7 +348,8 @@ function applyStaffFilters(){
  $('ssCloudStaffReports')?.querySelectorAll('[data-report]').forEach(row=>{row.hidden=!(row.dataset.report.includes(rs)&&(rf==='all'||row.dataset.status===rf))});
 }
 
-async function renderStaff(){staffMsg('Loading accounts, reports, and audit history…');const [users,reports,audit]=await Promise.all([rpc('ss_staff_profiles'),rpc('ss_staff_reports'),rpc('ss_staff_audit')]);
+async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=role==='owner'||role==='admin';
+ const [users,reports,audit]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([])]);
  staffData={users,reports,audit};const summary=$('ssCloudAdminSummary');if(summary){summary.replaceChildren();for(const [number,label] of [[users.length,'Accounts'],[users.filter(u=>u.role==='owner').length,'Owners'],[reports.filter(r=>r.status==='open').length,'Open reports'],[users.filter(u=>u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())).length,'Active bans'],[users.filter(u=>u.role!=='student').length,'Staff']]){const tile=document.createElement('div');tile.className='ssc-summary-tile';const strong=document.createElement('strong');strong.textContent=number;const small=document.createElement('small');small.textContent=label;tile.append(strong,small);summary.append(tile)}}
  const manager=$('ssCloudRoleTools'),target=$('ssCloudTargetUser');if(manager)manager.hidden=role!=='owner';
  if(target){const old=target.value;target.replaceChildren();for(const u of users.filter(u=>u.id!==person?.id))target.add(new Option('@'+u.username+' · '+u.role,u.id));if(users.some(u=>u.id===old&&u.id!==person?.id))target.value=old;const onPick=()=>{const u=users.find(user=>user.id===target.value);if(u)$('ssCloudTargetRole').value=u.role;};target.onchange=onPick;onPick();$('ssCloudApplyRole').disabled=role!=='owner'||!target.value;}
@@ -334,6 +379,13 @@ function addStyling(){const style=document.createElement('style');style.textCont
  .ssc-shell .ssc-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.ssc-shell .ssc-title-row button{white-space:nowrap;font-size:12px;padding:7px 10px}.ssc-shell button[hidden]{display:none!important}.ssc-shell .ssc-password-toggle{display:block;margin:8px 0 0 auto;font-size:12px;padding:6px 11px}
 .ssc-row{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}.ssc-row>button{flex:1}.ssc-shell button,.ssc-staffbox button{cursor:pointer;border:1px solid #8a89d8;background:#7978d6;color:#fff;border-radius:9px;padding:9px 13px;font-weight:720;font:inherit}
 .ssc-methods{display:flex;gap:8px;margin:16px 0}.ssc-methods button{flex:1;font-size:12px;padding:9px 6px}.ssc-methods .ssc-selected{background:#7978d6!important;border-color:#9c9bfd!important;color:#fff!important}.ssc-shell button.ssc-light,.ssc-staffbox button.ssc-light{background:#25324c;border-color:#49607d}.ssc-shell button:hover,.ssc-staffbox button:hover{filter:brightness(1.2)}
+.ssc-shell .ssc-forgot{display:block;margin:12px 0;width:100%;font-size:12px}
+.ssc-shell #ssc-recovery[hidden]{display:none!important}
+#ssCloudRecoveryRequests{display:grid;gap:10px;margin-top:12px}
+.ssc-recovery-row{border:1px solid #34435c;border-radius:12px;padding:12px;overflow-wrap:anywhere}
+.ssc-recovery-row strong{display:block}
+.ssc-recovery-code{padding:10px;border:1px solid #7671c2;border-radius:9px;margin-top:12px}
+.ssc-recovery-code code{display:block;white-space:pre-wrap;word-break:break-all;font-size:14px;margin:8px 0}
 .ssc-banned{color:#ff657b;font-weight:950;font-size:35px;letter-spacing:1px;text-align:center;margin:18px 0 8px}.ssc-user{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #33425c;padding:12px 0}
 .ssc-user>div{flex:1;min-width:190px}.ssc-user small{display:block;color:#a8b5cb;overflow-wrap:anywhere}.ssc-user select{width:150px}.ssc-title-row{display:flex;justify-content:space-between;gap:15px}.ssc-staffbox h3{margin:24px 0 3px}.ssc-audit{padding:7px 0;border-bottom:1px solid #2e3a52;font-size:12px;color:#b5c3dd}
 
@@ -347,7 +399,7 @@ function addStyling(){const style=document.createElement('style');style.textCont
  #ssCloudStaffDialog .ssc-staff-tabs button{background:transparent;border:1px solid transparent;color:#aab5c8;padding:10px 13px}
  #ssCloudStaffDialog .ssc-staff-tabs button.ssc-current{color:#e9e7ff;background:#7773ff20;border-color:#4f4b8735;box-shadow:inset 3px 0 #8b86ff}
  #ssCloudStaffDialog .ssc-admin-section{background:linear-gradient(145deg,#141b28,#101620);border:1px solid #283348;border-radius:16px;padding:16px 19px 19px!important}
- #ssCloudStaffDialog .ssc-admin-section[hidden],#ssCloudStaffDialog #ssCloudRoleTools[hidden]{display:none!important}
+ #ssCloudStaffDialog .ssc-admin-section[hidden],#ssCloudStaffDialog #ssCloudRoleTools[hidden],#ssCloudStaffDialog .ssc-staff-tabs button[hidden]{display:none!important}
  #ssCloudStaffDialog .ssc-role-manager{background:#1c1a34;border:1px solid #393766;border-radius:13px;padding:13px;margin:12px 0}
  #ssCloudStaffDialog .ssc-role-manager label{font-weight:800;color:#dad7ff}
  #ssCloudStaffDialog .ssc-role-manager small{color:#a8a5db}
