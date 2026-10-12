@@ -186,22 +186,39 @@ create policy ss_study_self_update on public.ss_study_data for update to authent
   with check (user_id=(select public.ss_current_profile_id()) and (select public.ss_can_use()));
 
 -- Existing staff moderation RPCs now identify the signed-in USERNAME account.
-create or replace function public.ss_change_role(target_user uuid,new_role text)
+create or replace function public.ss_change_role(target_user uuid, new_role text)
 returns void language plpgsql security definer set search_path = '' as $$
-declare actor_id uuid := public.ss_current_profile_id();
+declare
+  actor_id uuid := public.ss_current_profile_id();
+  previous_role text;
 begin
-  if not exists(select 1 from public.ss_profiles p where p.id=actor_id
-      and p.role='owner' and
-      (not p.banned or (p.banned_until is not null and p.banned_until<=now()))) then
-    raise exception 'Only the owner can assign roles';
+  -- Serialize role changes so two Owners cannot remove one another concurrently
+  -- and accidentally leave the project without an Owner.
+  perform pg_catalog.pg_advisory_xact_lock(82619, 3782);
+  if actor_id is null or not exists (
+    select 1 from public.ss_profiles p
+    where p.id=actor_id and p.role='owner'
+      and (not p.banned or (p.banned_until is not null and p.banned_until<=now()))
+  ) then
+    raise exception 'Only an active Owner can assign roles';
   end if;
-  if target_user=actor_id or new_role not in ('student','moderator','admin') then
-    raise exception 'Invalid role change';
+  if target_user is null or target_user=actor_id
+    or new_role is null or new_role not in ('student','moderator','admin','owner') then
+    raise exception 'Invalid role change: choose a different account and valid role';
   end if;
-  update public.ss_profiles p set role=new_role where p.id=target_user and p.role<>'owner';
-  if not found then raise exception 'Account not found or protected'; end if;
+  select p.role into previous_role
+    from public.ss_profiles p where p.id=target_user for update;
+  if previous_role is null then
+    raise exception 'Account not found';
+  end if;
+  if previous_role='owner' and new_role<>'owner'
+    and (select count(*) from public.ss_profiles where role='owner')<=1 then
+    raise exception 'Cannot remove the final Owner';
+  end if;
+  if previous_role=new_role then return; end if;
+  update public.ss_profiles set role=new_role where id=target_user;
   insert into public.ss_admin_audit(actor_id,target_id,action,details)
-    values(actor_id,target_user,'role',new_role);
+    values(actor_id,target_user,'role',previous_role||' -> '||new_role);
 end;
 $$;
 create or replace function public.ss_change_ban(target_user uuid,ban_hours integer,reason text,lift boolean default false)
