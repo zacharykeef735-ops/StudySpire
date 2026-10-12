@@ -45,7 +45,7 @@ function showGate(kind='login'){
  <div class="ssc-row"><button id="ssc-flash" type="button">Export flashcards</button><button id="ssc-chats" type="button" class="ssc-light">Export saved chats</button></div>
  <div class="ssc-row"><button id="ssc-all" type="button" class="ssc-light">Export all study data</button><button id="ssc-check" type="button" class="ssc-light">Check ban status</button></div>
  <p class="ssc-caption">Downloads are available for the account owner. A ban doesn't delete your notes.</p></div>
- <div class="ssc-row"><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
+ <div id="ssc-current-actions" hidden><p class="ssc-caption">Your existing account, password and study data will be kept. Creating another account requires signing out first.</p><button id="ssc-new-account" class="ssc-light" type="button">＋ Create another account</button></div><div class="ssc-row"><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
  const setMethod=(method)=>{
    authMethod=method;const email=method==='email';
    $('ssc-userRow').hidden=email;$('ssc-emailRow').hidden=!email;
@@ -66,11 +66,11 @@ function showGate(kind='login'){
      const chosen_username=$('ssc-user').value.trim().toLowerCase();
      if(!/^[a-z0-9_-]{3,32}$/.test(chosen_username)||/^(admin|owner|moderator|support|staff|official)$/.test(chosen_username))return cloudNotice('Choose a username using 3–32 letters, numbers, _ or -.');
      if(password.length<10||new TextEncoder().encode(password).length>72)return cloudNotice('Use a password of at least 10 characters and no more than 72 bytes.');
-     if(!confirm('Username accounts have no email recovery. Have you saved your password?'))return;
-     cloudNotice('Creating your username account…');
+     // Registration is explicit; browser confirm dialogs can be blocked by embedded browsers.
+     const createButton=$('ssc-register');createButton.disabled=true;cloudNotice('Creating your username account…');
      let phase='starting a secure session';try{await ensureAnonymous();phase='creating your username account';const {error}=await client.rpc('ss_username_register',{chosen_username,chosen_password:password});
        if(error)throw Error(error.message);cloudNotice('Account created. Loading Study Summit…');await boot();
-     }catch(err){cloudNotice('Could not create account ('+phase+'): '+(err.message||err));}
+     }catch(err){const message=String(err?.message||err);cloudNotice('Could not create account ('+phase+'): '+message);if(/sign out before creating another account|session has an account/i.test(message)){$('ssc-logout').parentElement.hidden=false;cloudNotice('This browser already has a username account. Sign out below, then press Create account again.');}}finally{createButton.disabled=false}
      return;
    }
    const row=$('ssc-nameRow');if(row.hidden){row.hidden=false;$('ssc-register').textContent='Finish registration';cloudNotice('Choose a username, then press Finish registration.');return}
@@ -98,10 +98,14 @@ function showGate(kind='login'){
  };
  $('ssc-pass').onkeydown=e=>{if(e.key==='Enter')$('ssc-login').click()};
  $('ssc-logout').onclick=signOutCloud;
+ $('ssc-new-account').onclick=async()=>{if(!confirm('Sign out of @'+(profile?.username||'your account')+' to create a separate account? Your current password and study data will stay unchanged.'))return;sessionStorage.setItem('ss-cloud-next-action','register');await signOutCloud()};
  $('ssc-check').onclick=async()=>{const ok=await refreshProfile();if(ok&&!banned(profile))location.reload();else cloudNotice('This ban is still active. Your data export options are available below.')};
  $('ssc-flash').onclick=()=>exportMine('flash');$('ssc-chats').onclick=()=>exportMine('chats');$('ssc-all').onclick=()=>exportMine('all');
  setMethod(authMethod);
- if(kind==='loading'){$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=true;cloudNotice('Checking your account and syncing study data…')}
+ $('ssc-current-actions').hidden=!(person&&kind==='account'&&!banned(profile));
+ $('ssc-logout').parentElement.hidden=!(person&&kind!=='loading');
+ if(kind==='loading'){$('ssc-loginArea').hidden=true;cloudNotice('Checking your account and syncing study data…')}
+ if(kind==='login'&&!person&&sessionStorage.getItem('ss-cloud-next-action')==='register'){sessionStorage.removeItem('ss-cloud-next-action');cloudNotice('Ready to create an account. Choose a new username and password, then press Create account.');$('ssc-user')?.focus()}
  $('ssc-close').hidden=!(person&&kind==='account'&&!banned(profile));
  if(kind==='banned')showBanned();
  return gate;
@@ -153,7 +157,7 @@ async function signOutCloud(){
   const staff=$('ssCloudStaffDialog');if(staff)staff.hidden=true;
   location.reload();
  }catch(error){
-  cloudNotice('Could not sign out: '+(error?.message||error)+'. Please retry.');
+  sessionStorage.removeItem('ss-cloud-next-action');cloudNotice('Could not sign out: '+(error?.message||error)+'. Please retry.');
   console.error('Study Summit cloud sign-out failed:',error);
  }finally{
   signingOut=false;
