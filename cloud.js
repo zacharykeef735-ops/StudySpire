@@ -143,7 +143,26 @@ async function refreshProfile(){if(!person)return false;const {data,error}=await
  try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate?.querySelector('#ssc-bannedArea')&&!gate.hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
 function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log)log.textContent='Sign out';
- if($('ssCloudStaffBtn'))$('ssCloudStaffBtn').hidden=!['owner','admin','moderator'].includes(role)}
+ const owner=role==='owner',staff=owner||role==='admin'||role==='moderator';
+ for(const id of ['ssCloudStaffBtn','ssCloudOwnerTop','ssCloudOwnerNav','ssCloudOwnerQuick']){const btn=$(id);if(!btn)continue;btn.hidden=!staff;if(id!=='ssCloudOwnerNav'&&id!=='ssCloudOwnerQuick')btn.textContent=owner?'👑 Owner Dashboard':'⚑ Staff Dashboard';if(id==='ssCloudOwnerNav'){const name=btn.querySelector('.sd-navtext');if(name)name.textContent=owner?'👑 Owner Dashboard':'⚑ Staff Dashboard'}}
+ if(!staff&&$('ssCloudStaffDialog'))$('ssCloudStaffDialog').hidden=true;
+}
+function installOwnerNavigation(){
+ // Show only the cloud-verified Owner/Admin/Moderator dashboard, never the local-only demo.
+ const openDashboard=()=>openStaff();
+ if(!$('ssCloudOwnerTop')){
+  const top=$('sdTopAccount');
+  if(top?.parentElement){const btn=document.createElement('button');btn.id='ssCloudOwnerTop';btn.type='button';btn.className='btn secondary small';btn.textContent='👑 Owner Dashboard';btn.onclick=openDashboard;btn.hidden=true;top.parentElement.insertBefore(btn,top);}
+ }
+ if(!$('ssCloudOwnerNav')){
+  const old=$('ssAdminSidebar');
+  if(old?.parentElement){const btn=document.createElement('button');btn.id='ssCloudOwnerNav';btn.type='button';btn.hidden=true;btn.innerHTML='<span class="navicon">⚑</span><span class="sd-navtext">👑 Owner Dashboard</span>';btn.onclick=openDashboard;old.parentElement.insertBefore(btn,old.nextSibling);}
+ }
+ if(!$('ssCloudOwnerQuick')){
+  const quick=document.querySelector('.sd-dashboard-actions');
+  if(quick){const btn=document.createElement('button');btn.id='ssCloudOwnerQuick';btn.hidden=true;btn.type='button';btn.innerHTML='<span>👑</span> Owner Dashboard';btn.onclick=openDashboard;quick.append(btn);}
+ }
+}
 function installButtons(){document.documentElement.classList.add('ss-cloud-active');
  const localShade=$('sdAuthShade');if(localShade)localShade.style.display='none';
  const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate('account');cloudNotice(`Signed in as @${profile?.username||'…'}. Sign out below to switch accounts.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
@@ -159,6 +178,7 @@ function installButtons(){document.documentElement.classList.add('ss-cloud-activ
  const feed=$('sdFriendStatus');if(feed)feed.textContent='Shared messaging is not yet available in Cloud mode. Your private study notes still sync.';
  // Keep legacy admin and local role panels hidden even if their own render methods later unhide them.
  const style=document.createElement('style');style.textContent='.ss-cloud-active #ssAdminSidebar,.ss-cloud-active #ssAdminSuiteTab,.ss-cloud-active #ssLabRolesTab,.ss-cloud-active #ssAdminPane,.ss-cloud-active #sdAuthShade,.ss-cloud-active #sdFriendFind,.ss-cloud-active #sdSendMessage,.ss-cloud-active #sdShareDeck{display:none!important}';document.head.append(style);
+ installOwnerNavigation();
  updateHeader();
 }
 let lastUpload=Promise.resolve();
@@ -209,24 +229,43 @@ async function sendReport(){if(!person||banned(profile))return;const about=promp
  const message=prompt('Describe what happened (at least 10 characters):');if(message===null)return;
  const {error}=await client.rpc('ss_report_issue',{about_name:about,complaint:message});alert(error?'Could not send report: '+error.message:'Report received. Staff can review it in Cloud staff.')}
 async function rpc(name,args){const {data,error}=await client.rpc(name,args||{});if(error)throw Error(error.message);return data}
-function openStaff(){if(!['owner','admin','moderator'].includes(role))return;
+async function openStaff(){if(!person||!['owner','admin','moderator'].includes(role)||banned(profile))return;
+ if(!await refreshProfile()||!['owner','admin','moderator'].includes(role)||banned(profile))return;
  let modal=$('ssCloudStaffDialog');if(!modal){modal=document.createElement('div');modal.id='ssCloudStaffDialog';document.body.append(modal)}
- modal.hidden=false;modal.innerHTML='<div class="ssc-staffbox"><div class="ssc-title-row"><h2>Cloud staff · '+escapeHTML(role)+'</h2><button id="ssCloudStaffClose" class="ssc-light">Close</button></div><p class="ssc-muted">These actions apply across devices and are checked by the server.</p><div id="ssCloudStaffMsg" role="status"></div><div id="ssCloudStaffUsers"></div><h3>Reports</h3><div id="ssCloudStaffReports"></div><h3>Recent admin actions</h3><div id="ssCloudStaffAudit"></div></div>';
+ modal.hidden=false;modal.innerHTML='<div class="ssc-staffbox" role="dialog" aria-modal="true" aria-labelledby="ssCloudAdminTitle" tabindex="-1"><div class="ssc-title-row"><h2 id="ssCloudAdminTitle">'+(role==='owner'?'👑 Owner Dashboard':'⚑ Staff Dashboard')+'</h2><button id="ssCloudStaffClose" class="ssc-light" type="button">✕ Close</button></div><p class="ssc-muted">Manage real cloud accounts across devices. Role changes, bans, and reports are checked by Supabase.</p><div id="ssCloudAdminSummary" class="ssc-admin-summary"></div><div id="ssCloudStaffMsg" role="status" aria-live="polite"></div><section class="ssc-admin-section"><h3>Account management &amp; roles</h3><div class="ssc-admin-tools"><input id="ssCloudAccountSearch" type="search" placeholder="Search users or roles…" aria-label="Search accounts"/><select id="ssCloudAccountFilter" aria-label="Filter accounts"><option value="all">All accounts</option><option value="active">Active</option><option value="banned">Banned</option><option value="staff">Staff</option></select><button id="ssCloudRefresh" class="ssc-light" type="button">↻ Refresh</button></div><div id="ssCloudStaffUsers"></div></section><section class="ssc-admin-section"><div class="ssc-title-row"><h3>Reports</h3><button class="ssc-light" id="ssCloudExportReports" type="button">↓ Export reports</button></div><div class="ssc-admin-tools"><select id="ssCloudReportFilter" aria-label="Filter reports"><option value="open">Open reports</option><option value="all">All reports</option><option value="reviewed">Reviewed reports</option></select><input id="ssCloudReportSearch" type="search" placeholder="Search reports…" aria-label="Search reports"/></div><div id="ssCloudStaffReports"></div></section><section class="ssc-admin-section"><div class="ssc-title-row"><h3>Recent admin actions</h3><button class="ssc-light" id="ssCloudExportAudit" type="button">↓ Export history</button></div><div id="ssCloudStaffAudit"></div></section></div>';
  $('ssCloudStaffClose').onclick=()=>modal.hidden=true;
+ modal.onclick=e=>{if(e.target===modal)modal.hidden=true};
+ modal.onkeydown=e=>{if(e.key==='Escape')modal.hidden=true};
+ for(const name of ['ssCloudAccountSearch','ssCloudReportSearch'])$(name).oninput=applyStaffFilters;
+ for(const name of ['ssCloudAccountFilter','ssCloudReportFilter'])$(name).onchange=applyStaffFilters;
+ $('ssCloudRefresh').onclick=()=>renderStaff().catch(e=>staffMsg(e.message));
+ $('ssCloudExportReports').onclick=()=>download('study-summit-reports-'+Date.now()+'.json',{exported:new Date().toISOString(),reports:staffData.reports});
+ $('ssCloudExportAudit').onclick=()=>download('study-summit-admin-audit-'+Date.now()+'.json',{exported:new Date().toISOString(),actions:staffData.audit});
+ modal.querySelector('.ssc-staffbox').focus();
  renderStaff().catch(e=>staffMsg(e.message));}
+let staffData={users:[],reports:[],audit:[]};
 function staffMsg(message){if($('ssCloudStaffMsg'))$('ssCloudStaffMsg').textContent=message}
-async function renderStaff(){const [users,reports,audit]=await Promise.all([rpc('ss_staff_profiles'),rpc('ss_staff_reports'),rpc('ss_staff_audit')]);
+function applyStaffFilters(){
+ const s=($('ssCloudAccountSearch')?.value||'').toLowerCase().trim(),filter=$('ssCloudAccountFilter')?.value||'all';
+ $('ssCloudStaffUsers')?.querySelectorAll('[data-staff-user]').forEach(row=>{const hit=row.dataset.staffUser.includes(s),ban=row.dataset.banned==='true',staff=row.dataset.staffRole!=='student';row.hidden=!(hit&&(filter==='all'||filter==='active'&&!ban||filter==='banned'&&ban||filter==='staff'&&staff))});
+ const rs=($('ssCloudReportSearch')?.value||'').toLowerCase().trim(),rf=$('ssCloudReportFilter')?.value||'open';
+ $('ssCloudStaffReports')?.querySelectorAll('[data-report]').forEach(row=>{row.hidden=!(row.dataset.report.includes(rs)&&(rf==='all'||row.dataset.status===rf))});
+}
+
+async function renderStaff(){staffMsg('Loading accounts, reports, and audit history…');const [users,reports,audit]=await Promise.all([rpc('ss_staff_profiles'),rpc('ss_staff_reports'),rpc('ss_staff_audit')]);
+ staffData={users,reports,audit};const summary=$('ssCloudAdminSummary');if(summary)summary.textContent=users.length+' accounts · '+reports.filter(r=>r.status==='open').length+' open reports · '+users.filter(u=>u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())).length+' active bans · '+users.filter(u=>u.role!=='student').length+' staff';
  const box=$('ssCloudStaffUsers');if(!box)return;box.replaceChildren();const h=document.createElement('h3');h.textContent='Accounts ('+users.length+')';box.append(h);
- for(const u of users){const row=document.createElement('div');row.className='ssc-user';const left=document.createElement('div');const tag=document.createElement('strong');tag.textContent='@'+u.username+' · '+u.role;left.append(tag);
+ for(const u of users){const row=document.createElement('div');row.className='ssc-user';row.dataset.staffUser=(u.username+' '+u.role).toLowerCase();row.dataset.staffRole=u.role;row.dataset.banned=String(Boolean(u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())));const left=document.createElement('div');const tag=document.createElement('strong');tag.textContent='@'+u.username+' · '+u.role;left.append(tag);
  const note=document.createElement('small');note.textContent=u.banned&&(!u.banned_until||new Date(u.banned_until)>new Date())?'BANNED · '+(u.ban_reason||'No reason'):u.banned?'Ban expired':'Active';left.append(note);row.append(left);
  if(role==='owner'&&u.role!=='owner'){const sel=document.createElement('select');['student','moderator','admin'].forEach(r=>sel.add(new Option(r,r)));sel.value=u.role;sel.setAttribute('aria-label','Role for '+u.username);sel.onchange=async()=>{if(!confirm('Set @'+u.username+' to '+sel.value+'?'))return;try{await rpc('ss_change_role',{target_user:u.id,new_role:sel.value});staffMsg('Role updated.');await renderStaff()}catch(e){staffMsg(e.message)}};row.append(sel)}
  if(['owner','admin'].includes(role)&&u.role!=='owner'&&u.id!==person.id&&(role==='owner'||u.role!=='admin')){
  const activeBan=u.banned&&(!u.banned_until||new Date(u.banned_until)>new Date());const ban=document.createElement('button');ban.textContent=activeBan?'Lift ban early':'Ban';ban.className='ssc-light';ban.onclick=async()=>{try{if(activeBan){if(!confirm('Unban @'+u.username+' right now?'))return;await rpc('ss_change_ban',{target_user:u.id,ban_hours:0,reason:'Ban lifted early',lift:true})}
  else{const why=prompt('Reason for banning @'+u.username+' (required):');if(!why?.trim())return;const duration=prompt('Hours: 24 = 1 day, 168 = 7 days, 720 = 30 days, 0 = permanent','24');if(!['0','24','168','720'].includes(duration))return alert('Choose 0, 24, 168 or 720.');if(!confirm('Confirm ban for @'+u.username+'?'))return;await rpc('ss_change_ban',{target_user:u.id,ban_hours:Number(duration),reason:why,lift:false})}
  staffMsg('Ban action saved.');await renderStaff()}catch(e){staffMsg(e.message)}};row.append(ban)}box.append(row)}
- const reportsBox=$('ssCloudStaffReports');reportsBox.replaceChildren();for(const r of reports){const item=document.createElement('div');item.className='ssc-user';const text=document.createElement('div');const line=document.createElement('strong');line.textContent=(r.status==='open'?'OPEN · ':'REVIEWED · ')+(r.about_username||'General report');const detail=document.createElement('small');detail.textContent='From @'+r.reporter_name+' · '+r.reason; text.append(line,detail);item.append(text);
+ const reportsBox=$('ssCloudStaffReports');reportsBox.replaceChildren();for(const r of reports){const item=document.createElement('div');item.className='ssc-user';item.dataset.report=(r.about_username+' '+r.reporter_name+' '+r.reason).toLowerCase();item.dataset.status=r.status;const text=document.createElement('div');const line=document.createElement('strong');line.textContent=(r.status==='open'?'OPEN · ':'REVIEWED · ')+(r.about_username||'General report');const detail=document.createElement('small');detail.textContent='From @'+r.reporter_name+' · '+r.reason; text.append(line,detail);item.append(text);
  if(r.status==='open'){const review=document.createElement('button');review.className='ssc-light';review.textContent='Mark reviewed';review.onclick=async()=>{try{await rpc('ss_review_report',{report_id:r.id});await renderStaff()}catch(e){staffMsg(e.message)}};item.append(review)}reportsBox.append(item)}if(!reports.length)reportsBox.textContent='No reports.';
  const auditBox=$('ssCloudStaffAudit');auditBox.replaceChildren();for(const a of audit){const item=document.createElement('div');item.className='ssc-audit';item.textContent=`${new Date(a.created_at).toLocaleString()} · @${a.actor_name} · ${a.action} · @${a.target_name} · ${a.details}`;auditBox.append(item)}if(!audit.length)auditBox.textContent='No admin actions yet.';
+ applyStaffFilters();staffMsg('Cloud dashboard refreshed.');
 }
 function addStyling(){const style=document.createElement('style');style.textContent=`
 #ssCloudGate[hidden],#ssCloudStaffDialog[hidden]{display:none!important}
@@ -240,6 +279,16 @@ function addStyling(){const style=document.createElement('style');style.textCont
 .ssc-methods{display:flex;gap:8px;margin:16px 0}.ssc-methods button{flex:1;font-size:12px;padding:9px 6px}.ssc-methods .ssc-selected{background:#7978d6!important;border-color:#9c9bfd!important;color:#fff!important}.ssc-shell button.ssc-light,.ssc-staffbox button.ssc-light{background:#25324c;border-color:#49607d}.ssc-shell button:hover,.ssc-staffbox button:hover{filter:brightness(1.2)}
 .ssc-banned{color:#ff657b;font-weight:950;font-size:35px;letter-spacing:1px;text-align:center;margin:18px 0 8px}.ssc-user{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #33425c;padding:12px 0}
 .ssc-user>div{flex:1;min-width:190px}.ssc-user small{display:block;color:#a8b5cb;overflow-wrap:anywhere}.ssc-user select{width:150px}.ssc-title-row{display:flex;justify-content:space-between;gap:15px}.ssc-staffbox h3{margin:24px 0 3px}.ssc-audit{padding:7px 0;border-bottom:1px solid #2e3a52;font-size:12px;color:#b5c3dd}
+
+ #ssCloudOwnerTop[hidden],#ssCloudOwnerNav[hidden],#ssCloudOwnerQuick[hidden],#ssCloudStaffBtn[hidden]{display:none!important}
+ #ssCloudOwnerNav{color:#e4d9ff}#ssCloudOwnerTop{white-space:nowrap}#ssCloudOwnerQuick{border-color:#9d85e9}
+ #ssCloudStaffDialog .ssc-staffbox{width:min(100%,1010px);outline:0}
+ #ssCloudStaffDialog .ssc-admin-summary{margin:15px 0;padding:12px;background:#1b2a43;border-radius:10px;border:1px solid #354867;font-size:13px;color:#d3e3ff}
+ #ssCloudStaffDialog .ssc-admin-section{margin:16px 0 22px;border-top:1px solid #34435c;padding-top:10px}
+ #ssCloudStaffDialog .ssc-admin-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+ #ssCloudStaffDialog .ssc-admin-tools input,#ssCloudStaffDialog .ssc-admin-tools select{min-width:150px;flex:1;background:#0c1524;color:#fff;border:1px solid #486080;border-radius:9px;padding:10px;font:inherit}
+ #ssCloudStaffDialog .ssc-user[hidden]{display:none!important}#ssCloudStaffDialog .ssc-title-row{align-items:center}
+ @media(max-width:720px){#ssCloudStaffDialog .ssc-user{align-items:flex-start}#ssCloudStaffDialog .ssc-user select{max-width:100%}}
 `;document.head.append(style)}
 addStyling();
 if(!ready){
