@@ -944,10 +944,12 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
     "Llama-3.2-1B-Instruct-q4f32_1-MLC": { label: "Llama 3.2 1B · compatibility", tier: "Fast · more memory", detail: "Alternative when the recommended version is incompatible" },
     "SmolLM2-1.7B-Instruct-q4f32_1-MLC": { label: "SmolLM2 1.7B", tier: "Balanced", detail: "More detailed responses; needs more device memory" },
     "Llama-3.2-3B-Instruct-q4f16_1-MLC": { label: "Llama 3.2 3B", tier: "More capable · slower", detail: "Detailed general explanations; larger download" }
-  };  const DEFAULT_MODEL_ID = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+  };
+  const DEFAULT_MODEL_ID = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
   let localEngine = null;
   let loadedModelId = null;
   let loading = false;
+  let loadGeneration = 0;
 
   function savedModelChoice() {
     try {
@@ -1049,6 +1051,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
     el("loadLocalModel").addEventListener("click", async function () {
       if (loading) return;
       loading = true;
+      const generation=++loadGeneration;
       const button = el("loadLocalModel");
       button.disabled = true;
       let monitor=null;
@@ -1060,8 +1063,8 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         const adapter=await withDeadline(navigator.gpu.requestAdapter(),15000,"Graphics check timed out");
         if(!adapter)throw new Error("No compatible WebGPU graphics adapter was found. Enable hardware acceleration in Chrome/Edge settings, restart the browser, and try again.");
         const modelSelect = el("localModelChoice");
-        const chosenModelId = modelSelect && MODEL_CATALOG[modelSelect.value] ? modelSelect.value : DEFAULT_MODEL_ID;
-        const chosenModel = MODEL_CATALOG[chosenModelId];
+        let chosenModelId = modelSelect && MODEL_CATALOG[modelSelect.value] ? modelSelect.value : DEFAULT_MODEL_ID;
+        let chosenModel = MODEL_CATALOG[chosenModelId];
         try { localStorage.setItem(sdAccountKey("studydockLocalModel"), chosenModelId); } catch (_) {}
         if (localEngine && loadedModelId === chosenModelId) {
           setConnected(true);setStatus(chosenModel.label+" is already loaded and ready.","good");return;
@@ -1072,14 +1075,26 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         }
         setStatus("Step 2/3 · Connecting to the model library…","info");
         const module=await importWebLLM();
+        if(generation!==loadGeneration)return;
         const known=Array.isArray(module.prebuiltAppConfig?.model_list)?module.prebuiltAppConfig.model_list:[];
-        if(known.length&&!known.some(m=>m.model_id===chosenModelId)){
-          throw new Error(chosenModel.label+" is not offered by this version of WebLLM. Try Qwen 2.5 0.5B or Llama 3.2 1B.");
+        if(!known.length)throw new Error("The WebLLM model catalog is unavailable. Refresh StudySummit and retry.");
+        const supported=(id)=>{
+          const candidate=known.find(m=>m?.model_id===id);
+          return !!candidate && (!Array.isArray(candidate.required_features)||candidate.required_features.every(feature=>adapter.features?.has(feature)));
+        };
+        if(!supported(chosenModelId)){
+          const fallback=[DEFAULT_MODEL_ID,"SmolLM2-360M-Instruct-q4f32_1-MLC","Llama-3.2-1B-Instruct-q4f32_1-MLC",...Object.keys(MODEL_CATALOG)].find(supported);
+          if(!fallback)throw new Error("This WebGPU adapter does not support any of the installed model options. Check graphics acceleration and browser compatibility.");
+          chosenModelId=fallback;
+          chosenModel=MODEL_CATALOG[fallback];
+          if(modelSelect)modelSelect.value=fallback;
+          try{localStorage.setItem(sdAccountKey("studydockLocalModel"),fallback)}catch(_){}
+          setStatus("The selected model is unavailable or needs unsupported GPU features. Switching to "+chosenModel.label+"…","warn");
         }
         setStatus("Step 3/3 · Preparing "+chosenModel.label+". First use downloads model files; this may take several minutes.","info");
         let progress=0,progressAt=Date.now(),lastReport="Preparing model download";
         monitor=setInterval(()=>{
-          if(!loading)return;
+          if(!loading||generation!==loadGeneration)return;
           const seconds=Math.round((Date.now()-progressAt)/1000);
           if(seconds>=120&&progress<0.01){
             setStatus("Still at 0% after "+seconds+" seconds. Model files may be blocked or the download is stalled. Try another network, disable a blocking extension for this site, or reload and choose a different model.","warn");
@@ -1095,6 +1110,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
           try{
             engine=await module.CreateMLCEngine(chosenModelId,{
               initProgressCallback:report=>{
+                if(generation!==loadGeneration)return;
                 const fraction=Number(report?.progress);
                 if(Number.isFinite(fraction)&&fraction>progress){progress=fraction;progressAt=Date.now()}
                 lastReport=String(report?.text||"Loading model…").slice(0,380);
@@ -1105,12 +1121,17 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
             break;
           }catch(loadError){
             const reason=String(loadError?.message||loadError);
-            // Errors involving unavailable GPU support, model IDs or memory aren't transient.
-            if(attempt===2||/out.of.memory|device.lost|unsupported|not.found|404|invalid.model|shader.validation|allocation.failed/i.test(reason))throw loadError;
+            // Retrying a GPU failure or stalled operation can exhaust graphics memory.
+            if(generation!==loadGeneration||attempt===2||/out.of.memory|device.lost|unsupported|not.found|404|invalid.model|shader.validation|allocation.failed|webgpu|gpuerror|stalled at 0%/i.test(reason))throw loadError;
             progress=0;progressAt=Date.now();lastReport="Retrying model download";
             setStatus("The first model download failed. Retrying automatically (2/2)…","warn");
             await new Promise(resolve=>setTimeout(resolve,1800));
           }
+        }
+        if(generation!==loadGeneration){
+          try{await engine?.unload?.()}catch(_){}
+          setStatus("Browser AI loading stopped.","info");
+          return;
         }
         localEngine=engine;loadedModelId=chosenModelId;
         setConnected(true);
@@ -1119,14 +1140,20 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       }catch(err){
         setConnected(false);
         const detail=err?.message||String(err);
-        setStatus("Browser AI could not load: "+detail+" Try the smallest Qwen 2.5 0.5B model, verify Chrome/Edge hardware acceleration, and check that downloads from Hugging Face are allowed.","bad");
+        console.error("StudySummit AI model initialization failed:",err);
+        setStatus("Browser AI could not load: "+detail+" Try the SmolLM2 360M model, verify Chrome/Edge graphics acceleration, and ensure downloads from Hugging Face are allowed.","bad");
       }finally{
         if(monitor)clearInterval(monitor);
-        loading=false;button.disabled=false;
+        loading=false;if(button?.isConnected)button.disabled=false;
       }
     });
 
     el("unloadLocalModel").addEventListener("click", async function () {
+      ++loadGeneration;
+      if(loading){
+        setStatus("Cancelling AI startup; please wait for the active download to finish or refresh to stop it.","warn");
+        return;
+      }
       try { if (localEngine && typeof localEngine.unload === "function") await localEngine.unload(); } catch (_) {}
       localEngine = null;
       loadedModelId = null;
