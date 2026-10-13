@@ -27,6 +27,7 @@ function action(label,callback,cls='btn secondary small'){
 }
 function errorText(error){return String(error?.message||error||'Unknown error').slice(0,280)}
 function noItems(container,message){
+ if(!container)return;
  container.replaceChildren(node('p',message,'sd-social-empty'));
 }
 function isVisible(){
@@ -183,7 +184,7 @@ async function loadThread(){
      if(reason.length<10||reason.length>280)throw Error('Please enter 10–280 characters.');
      if(!confirm('Send this message text and your report to StudySummit moderators for review?'))return;
      await rpc('ss_social_report_message',{message_id:msg.id,why:reason});
-     e.currentTarget.textContent='Reported';e.currentTarget.disabled=true;
+     e.currentTarget.textContent='Reported';
      status('Message reported to StudySummit staff.','good');
     }),'ss-msg-report');
     bubble.append(report);
@@ -214,7 +215,7 @@ async function refresh(silent=false){
    blocked:Array.isArray(response?.blocked)?response.blocked:[],
    decks:Array.isArray(response?.decks)?response.decks:[]
   };
-  renderOverview();if(selected)await loadThread();lastFetch=Date.now();
+  setEnabled(true);renderOverview();if(selected)await loadThread();lastFetch=Date.now();
   if(!silent)status('☁ Messaging synced. Conversations are private to accepted friends.','good');
  }catch(error){status('Messaging could not sync: '+errorText(error),'error')}
  finally{
