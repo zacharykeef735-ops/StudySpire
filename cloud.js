@@ -71,8 +71,49 @@ function showGate(kind='login'){
    <label for="ssc-nextPass">New password</label><input id="ssc-nextPass" type="password" autocomplete="new-password" placeholder="At least 10 characters"/>
    <label for="ssc-nextPassAgain">Confirm new password</label><input id="ssc-nextPassAgain" type="password" autocomplete="new-password" placeholder="Repeat password"/>
    <button id="ssc-changePassword" type="button" class="ssc-light">Save new password</button><p class="ssc-caption">Other devices must sign in again after changing this password.</p>
-  </details></div><div class="ssc-row"><button id="ssCloudAvatarEdit" class="ssc-light" type="button">🖼 Profile picture</button><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
+  </details>
+  <details id="ssc-deleteSettings" class="ssc-change-pass ssc-danger-zone"><summary>Delete my account permanently</summary>
+   <p class="ssc-caption">This deletes your Cloud account, conversations, saved study data and profile picture. Export anything you need first. This cannot be undone.</p>
+   <label for="ssc-deleteUsername">Confirm your username</label><input id="ssc-deleteUsername" autocomplete="off" spellcheck="false" placeholder="Exact StudySpire username"/>
+   <label for="ssc-deletePassword">Current password</label><input id="ssc-deletePassword" type="password" autocomplete="current-password" placeholder="Current account password"/>
+   <label for="ssc-deletePhrase">Type DELETE to confirm</label><input id="ssc-deletePhrase" autocomplete="off" spellcheck="false" placeholder="DELETE"/>
+   <button id="ssc-deleteAccount" type="button" class="ssc-light">Permanently delete my account</button>
+  </details></div><div class="ssc-row"><button id="ssCloudAvatarEdit" class="ssc-light" type="button">🖼 Profile &amp; bio</button><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
  $('ssCloudAvatarEdit').onclick=()=>{gate.hidden=true;window.StudySpireAvatars?.openOwn();};
+ async function confirmAccountDeletion(){
+   if(!person||!profile)return cloudNotice('Sign into your Cloud account first.');
+   const username=$('ssc-deleteUsername')?.value.trim().toLowerCase();
+   const password=$('ssc-deletePassword')?.value||'';
+   const phrase=$('ssc-deletePhrase')?.value.trim();
+   if(username!==profile.username||!password||phrase!=='DELETE'){
+     cloudNotice('Enter your exact username, current password, and DELETE to confirm.');
+     return;
+   }
+   if(!confirm('Permanently delete @'+profile.username+' and all its Cloud data? This cannot be reversed.'))return;
+   const button=$('ssc-deleteAccount');if(button)button.disabled=true;
+   try{
+     const {error}=await client.rpc('ss_delete_my_account',{confirmed_username:username,confirmed_password:password});
+     if(error)throw Error(error.message);
+     live=false;clearTimeout(syncTimer);forgetUsername(username);
+     const prefixForDeleted='sd-account-'+cloudId+'::';
+     for(let i=localStorage.length-1;i>=0;i--){
+       const key=localStorage.key(i);
+       if(key?.startsWith(prefixForDeleted))localStorage.removeItem(key);
+     }
+     try{await client.auth.signOut({scope:'local'})}catch(_){}
+     person=null;profile=null;cloudId='';
+     sessionStorage.removeItem('studydoc-active-account');
+     sessionStorage.removeItem('ssCloudApplied');
+     sessionStorage.removeItem('ss-cloud-display-name');
+     location.reload();
+   }catch(error){cloudNotice('Account deletion failed: '+error.message)}
+   finally{
+     if($('ssc-deletePassword'))$('ssc-deletePassword').value='';
+     if(button)button.disabled=false;
+   }
+ }
+ $('ssc-deleteAccount').onclick=confirmAccountDeletion;
+
  const setMethod=(method)=>{
    authMethod=method;const email=method==='email';
    $('ssc-userRow').hidden=email;$('ssc-emailRow').hidden=!email;
@@ -255,7 +296,8 @@ async function refreshProfile(){if(!person)return false;const {data,error}=await
  if(error){cloudNotice('Account status unavailable: '+error.message);return false}profile=data;role=profile.role||'student';
  try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}rememberUsername(profile.username);if(banned(profile)){live=false;showBanned();window.dispatchEvent(new Event('ss-cloud-auth-changed'))}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
-function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log){log.textContent='Sign out';log.style.display='inline-flex';log.hidden=false;}
+function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;
+ const roleTag=window.StudySpireRoles;if(roleTag)roleTag.decorateLabel(topLabel,profile.username,role);const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log){log.textContent='Sign out';log.style.display='inline-flex';log.hidden=false;}
  const names={owner:'👑 Owner Dashboard',admin:'🛡 Admin Dashboard',moderator:'⚑ Moderator Dashboard'};
  const staff=Boolean(names[role]),label=names[role]||'StudySpire';
  for(const id of ['ssCloudStaffBtn','ssCloudOwnerTop','ssCloudOwnerNav','ssCloudOwnerQuick']){
@@ -358,13 +400,13 @@ async function sendReport(){if(!person||banned(profile))return;const about=promp
  const {error}=await client.rpc('ss_report_issue',{about_name:about,complaint:message});alert(error?'Could not send report: '+error.message:'Report received. Staff can review it in Cloud staff.')}
 async function rpc(name,args){const {data,error}=await client.rpc(name,args||{});if(error)throw Error(error.message);return data}
 const SOCIAL_ALLOWED=new Set([
- 'ss_social_lookup','ss_social_overview','ss_social_request','ss_social_respond',
+ 'ss_chat_language_check','ss_social_lookup','ss_social_overview','ss_social_request','ss_social_respond',
  'ss_social_cancel','ss_social_unfriend','ss_social_block','ss_social_unblock',
  'ss_social_messages','ss_social_send','ss_social_share_deck','ss_social_report_message'
 ]);
 window.StudySummitMessagingBridge={
  configured:ready,
- account:()=>live&&person&&profile&&!banned(profile)?{id:person.id,username:profile.username}:null,
+ account:()=>live&&person&&profile&&!banned(profile)?{id:person.id,username:profile.username,role:profile.role}:null,
  rpc:async(name,args)=>{
   if(!SOCIAL_ALLOWED.has(name))throw Error('Unsupported social operation');
   if(!live||!person||!profile||banned(profile))throw Error('Sign in to a Cloud account to use messages');
@@ -374,7 +416,7 @@ window.StudySummitMessagingBridge={
 // Photo actions use the existing authenticated Cloud client. Only allowlisted
 // avatar operations are forwarded; all privileges are re-checked by SQL.
 const AVATAR_ALLOWED=new Set([
- 'ss_avatar_me','ss_avatar_set','ss_avatar_public','ss_avatar_list','ss_avatar_report',
+ 'ss_public_profile','ss_public_titles','ss_profile_set_bio','ss_avatar_me','ss_avatar_set','ss_avatar_public','ss_avatar_list','ss_avatar_report',
  'ss_avatar_staff_overview','ss_avatar_staff_restrict','ss_avatar_staff_review'
 ]);
 window.StudySpireAvatarBridge={
