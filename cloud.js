@@ -370,6 +370,22 @@ window.StudySummitMessagingBridge={
   return rpc(name,args);
  }
 };
+// Photo actions use the existing authenticated Cloud client. Only allowlisted
+// avatar operations are forwarded; all privileges are re-checked by SQL.
+const AVATAR_ALLOWED=new Set([
+ 'ss_avatar_me','ss_avatar_set','ss_avatar_public','ss_avatar_list','ss_avatar_report',
+ 'ss_avatar_staff_overview','ss_avatar_staff_restrict','ss_avatar_staff_review'
+]);
+window.StudySpireAvatarBridge={
+ state:()=>live&&person&&profile&&!banned(profile)
+   ? {id:person.id,username:profile.username,role:profile.role,active:true}
+   : null,
+ rpc:async(name,args)=>{
+  if(!AVATAR_ALLOWED.has(name))throw Error('Unsupported profile picture operation');
+  if(!live||!person||!profile||banned(profile))throw Error('Sign in to a Cloud account first');
+  return rpc(name,args);
+ }
+};
 async function openStaff(){if(!person||!['owner','admin','moderator'].includes(role)||banned(profile))return;
  if(!await refreshProfile()||!['owner','admin','moderator'].includes(role)||banned(profile))return;
  let modal=$('ssCloudStaffDialog');if(!modal){modal=document.createElement('div');modal.id='ssCloudStaffDialog';document.body.append(modal)}
