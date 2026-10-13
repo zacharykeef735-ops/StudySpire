@@ -230,6 +230,7 @@ async function signOutCloud(){
   if(error)throw error;
   clearTimeout(syncTimer);
   live=false;person=null;profile=null;cloudId='';remote=null;
+  window.dispatchEvent(new Event('ss-cloud-auth-changed'));
   sessionStorage.removeItem('ss-cloud-display-name');
   sessionStorage.removeItem('studydoc-active-account');
   sessionStorage.removeItem('ssCloudApplied');
@@ -251,7 +252,7 @@ function exportMine(kind){const items=remote?.data||studyItems();const result={k
  download('study-summit-'+kind+'-'+Date.now()+'.json',result)}
 async function refreshProfile(){if(!person)return false;const {data,error}=await client.from('ss_profiles').select('id,username,role,banned,banned_until,ban_reason').eq('id',person.id).single();
  if(error){cloudNotice('Account status unavailable: '+error.message);return false}profile=data;role=profile.role||'student';
- try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}rememberUsername(profile.username);if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
+ try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}rememberUsername(profile.username);if(banned(profile)){live=false;showBanned();window.dispatchEvent(new Event('ss-cloud-auth-changed'))}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
 function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log){log.textContent='Sign out';log.style.display='inline-flex';log.hidden=false;}
  const names={owner:'👑 Owner Dashboard',admin:'🛡 Admin Dashboard',moderator:'⚑ Moderator Dashboard'};
@@ -290,9 +291,8 @@ function installButtons(){document.documentElement.classList.add('ss-cloud-activ
  if(!$('ssCloudStaffBtn')){const button=document.createElement('button');button.id='ssCloudStaffBtn';button.type='button';button.className='btn secondary small';button.textContent='⚑ Cloud staff';button.onclick=()=>openStaff();actions.append(button)}
  if(!$('ssCloudReportBtn')){const button=document.createElement('button');button.id='ssCloudReportBtn';button.type='button';button.className='btn secondary small';button.textContent='Report an issue';button.onclick=sendReport;actions.append(button)}
  const disabled=['ssAdminSidebar','ssAdminSuiteTab','ssLabRolesTab'];for(const name of disabled){const el=$(name);if(el)el.hidden=true}
- // Legacy local social activity cannot be represented as global messaging.
- for(const name of ['sdFriendFind','sdSendMessage','sdShareDeck']){const el=$(name);if(el){el.disabled=true;el.title='Local-only social features are disabled in Cloud mode.'}}
- const feed=$('sdFriendStatus');if(feed)feed.textContent='Shared messaging is not yet available in Cloud mode. Your private study notes still sync.';
+ // The authenticated messaging.js layer takes over this page with private Cloud RPCs.
+ // Local-only social handlers are kept only when Cloud is not configured.
  // Keep legacy admin and local role panels hidden even if their own render methods later unhide them.
  const style=document.createElement('style');style.textContent='.ss-cloud-active #ssAdminSidebar,.ss-cloud-active #ssAdminSuiteTab,.ss-cloud-active #ssLabRolesTab,.ss-cloud-active #ssAdminPane,.ss-cloud-active #sdAuthShade,.ss-cloud-active #sdFriendFind,.ss-cloud-active #sdSendMessage,.ss-cloud-active #sdShareDeck{display:none!important}';document.head.append(style);
  installOwnerNavigation();
@@ -339,6 +339,7 @@ async function boot(){
  if(remote.updated_at!=='new'&&sessionStorage.getItem('ssCloudApplied')!==tag){setStudy(remote.data);sessionStorage.setItem('ssCloudApplied',tag);location.reload();return}
  if(remote.updated_at==='new')sessionStorage.setItem('ssCloudApplied',tag);
  lastSnapshot=remote.updated_at==='new'?'':JSON.stringify(studyItems());live=true;installButtons();$('ssCloudGate').hidden=true;
+ window.dispatchEvent(new Event('ss-cloud-auth-changed'));
  if(remote.updated_at==='new'&&Object.keys(studyItems()).length)scheduleSync();
  window.addEventListener('beforeunload',()=>{if(live)uploadSnapshot().catch(()=>{})});
  window.addEventListener('focus',()=>refreshProfile());
@@ -355,6 +356,20 @@ async function sendReport(){if(!person||banned(profile))return;const about=promp
  const message=prompt('Describe what happened (at least 10 characters):');if(message===null)return;
  const {error}=await client.rpc('ss_report_issue',{about_name:about,complaint:message});alert(error?'Could not send report: '+error.message:'Report received. Staff can review it in Cloud staff.')}
 async function rpc(name,args){const {data,error}=await client.rpc(name,args||{});if(error)throw Error(error.message);return data}
+const SOCIAL_ALLOWED=new Set([
+ 'ss_social_lookup','ss_social_overview','ss_social_request','ss_social_respond',
+ 'ss_social_cancel','ss_social_unfriend','ss_social_block','ss_social_unblock',
+ 'ss_social_messages','ss_social_send','ss_social_share_deck','ss_social_report_message'
+]);
+window.StudySummitMessagingBridge={
+ configured:ready,
+ account:()=>live&&person&&profile&&!banned(profile)?{id:person.id,username:profile.username}:null,
+ rpc:async(name,args)=>{
+  if(!SOCIAL_ALLOWED.has(name))throw Error('Unsupported social operation');
+  if(!live||!person||!profile||banned(profile))throw Error('Sign in to a Cloud account to use messages');
+  return rpc(name,args);
+ }
+};
 async function openStaff(){if(!person||!['owner','admin','moderator'].includes(role)||banned(profile))return;
  if(!await refreshProfile()||!['owner','admin','moderator'].includes(role)||banned(profile))return;
  let modal=$('ssCloudStaffDialog');if(!modal){modal=document.createElement('div');modal.id='ssCloudStaffDialog';document.body.append(modal)}
