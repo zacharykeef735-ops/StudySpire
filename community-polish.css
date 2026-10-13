@@ -95,3 +95,33 @@
   .ss-verified-role{margin-left:4px;padding:1px 5px;font-size:9px}
   #miniPanel .sd-notes-name-field #sdNotesTitle{min-height:40px!important}
 }
+
+/* A 761-900px viewport uses a slide-out menu, not an uncollapsible fixed sidebar. */
+@media(min-width:761px) and (max-width:900px){
+  body.ss-brand-ready.ss-screenshot-layout .sd-mobile-bar{
+    position:sticky;top:0;z-index:100065;display:flex!important;align-items:center;
+    min-height:60px;padding:10px 16px;gap:12px;background:#13243b;border-bottom:1px solid #385375;
+  }
+  body.ss-brand-ready.ss-screenshot-layout .sd-mobile-menu{
+    display:grid!important;place-items:center;min-width:40px;height:40px;border:1px solid #6686af;
+    border-radius:10px;background:#233f65;color:#fff;font-size:20px;cursor:pointer;
+  }
+  body.ss-brand-ready.ss-screenshot-layout .sd-mobile-brand{font-size:15px;font-weight:850;color:#f3f8ff}
+  body.ss-brand-ready.ss-screenshot-layout .sd-mobile-sub{margin-left:auto;color:#a6b9d5}
+  body.ss-brand-ready.ss-screenshot-layout .app .sidebar{
+    top:0!important;left:0!important;max-height:100dvh!important;width:min(300px,85vw)!important;
+    transform:translateX(-105%)!important;transition:transform .18s ease!important;
+    z-index:100070!important;box-shadow:12px 0 44px #0007!important;
+  }
+  body.ss-brand-ready.ss-screenshot-layout .app.sd-mobile-open .sidebar{
+    transform:translateX(0)!important;
+  }
+  body.ss-brand-ready.ss-screenshot-layout .app .sd-mobile-shade{display:none!important}
+  body.ss-brand-ready.ss-screenshot-layout .app.sd-mobile-open .sd-mobile-shade{
+    display:block!important;position:fixed;inset:0;z-index:100069;
+    background:#020915b8;
+  }
+  body.ss-brand-ready.ss-screenshot-layout .app .sidebar .ss-primary-nav .sd-navtext{display:block!important}
+  body.ss-brand-ready.ss-screenshot-layout .app .sidebar .brand > div:nth-child(2){display:block!important}
+  body.ss-brand-ready.ss-screenshot-layout #sdSidebarToggle{opacity:1!important}
+}
