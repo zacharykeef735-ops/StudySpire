@@ -168,11 +168,7 @@ body.sd-floating-mini::before,body.sd-floating-mini::after{display:none!importan
 .sd-learning-profile .fieldgroup{margin-bottom:6px}
 @media(max-width:540px){.sd-learning-fields{grid-template-columns:1fr}#miniLauncher,#miniLauncher.enabled{right:12px!important;bottom:12px!important}}
 </style>
-<style id="sd-docs-handoff-style">
-/* Post-draft Docs handoff: same-file, no cross-tab scripting */
-.sd-docs-handoff{margin-top:20px;padding:17px;border:1px solid #3a4166;border-radius:15px;background:linear-gradient(145deg,#15263b,#181d36 67%,#202243);box-shadow:inset 0 1px 0 #ffffff0b}
-.sd-docs-handoff[hidden]{display:none!important}.sd-docs-top{display:flex;gap:11px;align-items:center;margin-bottom:16px}.sd-docs-symbol{display:grid;place-items:center;width:39px;height:39px;flex-shrink:0;border-radius:12px;background:linear-gradient(130deg,#327ec4,#7666d7 74%,#d5ab59);color:white;font-size:24px;font-weight:800}.sd-docs-top strong{font-size:14px;color:#f1f3ff}.sd-docs-top p{font-size:11px;color:#bbc7db;margin:3px 0 0}.sd-docs-check{display:flex;align-items:flex-start;gap:9px;color:#d2dbed;font-size:11px;margin:11px 0 13px;cursor:pointer}.sd-docs-check input{accent-color:#8976ef;margin-top:2px}.sd-docs-actions{gap:9px}.sd-docs-help{font-size:11px;color:#aebbd2;line-height:1.65;margin:12px 0 0}.sd-docs-help kbd{display:inline-block;padding:1px 5px;border-radius:5px;background:#101929;border:1px solid #44506c;color:#e0e7fa;font:inherit}.sd-docs-handoff .status{margin-top:10px}
-</style>
+
 <style id="sd-suite-styles">
 .sd-suite-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}.sd-suite-tabs button{background:#151d2b;color:#bfcbe0;border:1px solid #35425a;border-radius:10px;padding:9px 11px;font-weight:700;font-size:12px}.sd-suite-tabs button.active{background:linear-gradient(125deg,#41366c,#253f68);border-color:#a49cff;color:#fff}.sd-suite-pane{display:none}.sd-suite-pane.active{display:block}.sd-suite-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(270px,.7fr);gap:15px;align-items:start}.sd-flex{flex:1;min-width:130px}.sd-transcript{min-height:230px;max-height:430px;overflow:auto;border:1px solid #334158;background:#0b121e;border-radius:12px;padding:13px;margin:12px 0;display:flex;flex-direction:column;gap:10px}.sd-msg{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #36425a;background:#182235;border-radius:12px;padding:10px 12px;max-width:94%;line-height:1.6}.sd-msg.user{align-self:flex-end;background:#302d5b}.sd-msg small{display:block;color:#aaa6d9;margin-bottom:4px}.sd-output{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;color:#dce5f7;background:#0d1522;border:1px solid #303d55;border-radius:12px;padding:14px;margin:13px 0;min-height:70px;max-height:540px;overflow:auto}.sd-flashcard{cursor:pointer;min-height:170px;margin:16px 0;padding:22px;border:1px solid #6962aa;background:linear-gradient(135deg,#23294b,#181f35);border-radius:17px;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:13px;font-size:18px;font-weight:750;white-space:pre-wrap;overflow-wrap:anywhere}.sd-flashcard small{font-size:11px;color:#b8b3ec;font-weight:500}.sd-task-list{display:grid;gap:8px;margin:12px 0}.sd-task{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #2c3b53;border-radius:10px;background:#0e1725;overflow-wrap:anywhere}.sd-task span{flex:1;min-width:0}.sd-task button{background:#29324a;border:1px solid #46516d;color:#e0e6f4;border-radius:8px;padding:5px 8px;cursor:pointer}.sd-timer{font-size:clamp(44px,7vw,76px);font-weight:850;letter-spacing:-3px;text-align:center;padding:20px 0;color:#e5e1ff;font-variant-numeric:tabular-nums}.sd-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:14px 0}.sd-metrics>div{background:#121d2c;border:1px solid #34405a;border-radius:12px;padding:14px 8px;text-align:center}.sd-metrics strong{display:block;font-size:25px;color:#c6c0ff}.sd-metrics small{color:#9baac2;font-size:10px}#sdGraphCanvas{width:100%;height:auto;background:#0b1423;border:1px solid #34425b;border-radius:12px;margin-top:12px}.sd-suite-pane .cardbody .row{margin:10px 0}.sd-suite-pane .hint{margin-top:9px}@media(max-width:850px){.sd-suite-grid{grid-template-columns:1fr}.sd-suite-tabs button{font-size:11px;padding:7px 9px}}
 </style>
@@ -584,15 +580,6 @@ body{font-size:14px;line-height:1.55}
 </div>
 <div class="stack">
 <section class="card"><div class="cardhead"><div><div class="cardtitle">Your draft</div><div class="sub">Edit the writing directly in this box.</div></div></div><div class="cardbody"><div class="statrow" style="margin-bottom:13px"><div class="stat"><strong id="mWords">0</strong><span>Words</span></div><div class="stat"><strong id="mSentences">0</strong><span>Sentences</span></div><div class="stat"><strong id="mCitations">0</strong><span>Citation markers</span></div></div><textarea class="essayarea" id="essayDraft" placeholder="Your draft will appear here. You can also write or paste your own draft…"></textarea><div class="hint" id="wordStats">0 words · 0 characters</div><div class="row" style="margin-top:13px"><button class="btn secondary small" id="copyEssay">Copy</button><button class="btn secondary small" id="downloadEssay">Download .txt</button><button class="btn secondary small" id="saveEssay">Save draft</button></div>
-<div class="sd-docs-handoff" hidden="" id="sdDocsHandoff">
-<div class="sd-docs-top"><span aria-hidden="true" class="sd-docs-symbol">▤</span><div><strong>Continue editing in Google Docs</strong><p>Review your draft here, then move it into a document you can edit.</p></div></div>
-<label class="label" for="sdDocsLink">Google Docs document link</label>
-<input autocomplete="off" class="field" id="sdDocsLink" inputmode="url" placeholder="https://docs.google.com/document/d/…/edit" spellcheck="false" type="url"/>
-<label class="sd-docs-check"><input checked="" id="sdDocsBlankLine" type="checkbox"/> Add one blank line before the draft when pasted at the end</label>
-<div class="row sd-docs-actions"><button class="btn primary small" id="sdDocsCopy" type="button">Copy for Google Docs</button><button class="btn secondary small" id="sdDocsOpen" type="button">Open document ↗</button></div>
-<p class="sd-docs-help">In the Google Doc, press <kbd>Ctrl</kbd> + <kbd>End</kbd> to reach the end, then <kbd>Ctrl</kbd> + <kbd>V</kbd> to paste. The optional separator leaves an empty line before the draft. Google Docs must give you editing permission.</p>
-<div aria-live="polite" class="status" id="sdDocsStatus" role="status"></div>
-</div>
 </div></section>
 <section class="card"><div class="cardhead"><div><div class="cardtitle">Writing check</div><div class="sub">A practical quality check—not an AI detector score.</div></div></div><div class="cardbody"><button class="btn secondary full" id="reviewEssay">Review my draft</button><div class="checklist" id="reviewList" style="margin-top:12px"></div><div class="status" id="reviewStatus"></div></div></section>
 </div>
@@ -1477,70 +1464,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
   }
 })();
 </script>
-<script id="sd-docs-handoff-script">
-(()=>{
- 'use strict';
- const get=id=>document.getElementById(id);
- const panel=get('sdDocsHandoff'),draft=get('essayDraft'),link=get('sdDocsLink');
- if(!panel||!draft||!link)return;
- const status=get('sdDocsStatus');
- function notify(message,kind='info'){
-   status.textContent=message;
-   status.className='status show '+kind;
- }
- function refresh(){
-   panel.hidden=!draft.value.trim();
-   if(panel.hidden){status.textContent='';status.className='status'}
- }
- function getDocUrl(){
-   const raw=link.value.trim();
-   if(!raw)throw Error('Paste the link to a Google Doc first.');
-   let url;
-   try{url=new URL(raw)}catch(_){throw Error('That does not look like a valid URL.');}
-   if(url.protocol!=='https:'||url.hostname!=='docs.google.com'||!/^\/document\/(?:u\/\d+\/)?d\/[A-Za-z0-9_-]+(?:\/|$)/.test(url.pathname)){
-     throw Error('Use a Google Docs document link starting with https://docs.google.com/document/d/');
-   }
-   return url.href;
- }
- function textForPaste(){
-   const content=draft.value.trim();
-   if(!content)throw Error('Create or write an essay draft before copying.');
-   return (get('sdDocsBlankLine').checked?'\n\n':'')+content;
- }
- get('sdDocsCopy').addEventListener('click',async()=>{
-   let text;
-   try{text=textForPaste()}catch(error){notify(error.message,'warn');return}
-   try{
-     await navigator.clipboard.writeText(text);
-     notify('Copied! Switch to your Google Doc, press Ctrl + End, then Ctrl + V.','good');
-   }catch(error){
-     draft.focus();draft.select();
-     notify('Clipboard permission is unavailable here. The draft is selected: press Ctrl + C, then paste in Google Docs.','warn');
-   }
- });
- get('sdDocsOpen').addEventListener('click',()=>{
-   try{
-     const url=getDocUrl();
-     const anchor=document.createElement('a');
-     anchor.href=url;
-     anchor.target='_blank';
-     anchor.rel='noopener noreferrer';
-     document.body.appendChild(anchor);
-     anchor.click();
-     anchor.remove();
-     notify('Requested the Google Doc in a new tab. If it did not appear, check your browser popup settings.','info');
-   }catch(error){notify(error.message,'warn')}
- });
- draft.addEventListener('input',refresh);
- // Other StudySpire features set the textarea programmatically; update when their
- // existing word-count handler runs (generation, saved drafts, clearing a draft).
- const original=window.updateWordStats;
- if(typeof original==='function'){
-   window.updateWordStats=function(...args){const output=original.apply(this,args);refresh();return output};
- }
- refresh();
-})();
-</script>
+
 <script id="ss-local-chat-safety">
 (()=>{'use strict';
 const ROOT='ss-summit-mod-v361-', KEYS={reports:ROOT+'reports',restrictions:ROOT+'restrictions',strikes:ROOT+'strikes'};
