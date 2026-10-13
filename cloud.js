@@ -293,6 +293,9 @@ function showBanned(){const gate=$('ssCloudGate')||showGate();gate.hidden=false;
  const deletionNotice=expiry&&Number.isFinite(expiry.getTime())
    ?' This account becomes eligible for automatic deletion after '+expiry.toLocaleDateString()+', with daily processing, unless the ban is lifted.'
    :'';
+ // Banned users may still confirm early self-deletion after exporting their work.
+ const deletion=$('ssc-deleteSettings'),bannedArea=$('ssc-bannedArea');
+ if(deletion&&bannedArea&&!bannedArea.contains(deletion))bannedArea.append(deletion);
  $('ssc-banReason').textContent='Account @'+profile.username+' banned '+until+'. Reason: '+(profile.ban_reason||'Admin decision')+'.'+deletionNotice;
  const note=gate.querySelector('#ssc-bannedArea .ssc-caption');
  if(note)note.textContent=expiry?'Export important study data before the 30-day deadline. Deletion is permanent.':'Your study exports remain available while this temporary ban lasts.';
