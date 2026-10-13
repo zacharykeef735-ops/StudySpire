@@ -195,6 +195,7 @@
       // Friend thumbnails are fetched by exact username; only approved WebP images render.
       window.StudySpireAvatars?.decorate(avatar,friend.username);
       const text=document.createElement('span');text.className='ss-friend-name';text.textContent='@'+String(friend.username||'').slice(0,32);
+      window.StudySpireRoles?.decorateLabel(text,friend.username);
       const small=document.createElement('span');small.className='ss-friend-hint';small.textContent='Open conversation';
       const labels=document.createElement('span');labels.className='ss-friend-labels';labels.append(text,small);row.append(avatar,labels);
       row.addEventListener('click',()=>navTo('friends'));host.append(row);
