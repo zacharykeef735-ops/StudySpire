@@ -59,6 +59,14 @@ Welcome! You can use most study tools right in your browser. Sign in to a Cloud 
 3. Choose an accepted friend to exchange messages or share a copy of flashcards.
 4. Use **Block** or **Report** when necessary. Messaging isn't end-to-end encrypted; avoid sharing private information.
 
+### Profile pictures and reports
+1. Sign in to your Cloud account, open **Account → Profile picture**, or click your avatar at the top-right.
+2. Choose a JPG, PNG, or WebP image. StudySpire crops it to a square WebP thumbnail before uploading; the photo is visible to other signed-in users.
+3. Select **Save picture** to upload it, or **Remove picture** to restore your initials.
+4. To view or report another user's picture, open **Messages & friends**, search for their exact username, and select **View / report picture**. Choose **Report this profile picture**, write a reason, then send it.
+5. **Moderators** can review reports and remove Student pictures. **Admins** can also restrict uploads by Students and Moderators. **Owners** can manage all other accounts' pictures and restrictions. Restricted accounts can remove their own pictures but cannot upload new ones.
+6. Staff review reports under **Cloud staff → Profile pictures**. Reports include a snapshot of the reported image until reviewed. Upload restrictions and moderation actions are checked by Supabase, not just the website controls.
+
 ### 6. Handy shortcuts and troubleshooting
 - **Ctrl/⌘ + K:** Open Quick Actions to find a feature.
 - **Ctrl/⌘ + B:** Collapse or expand the sidebar.
@@ -83,6 +91,12 @@ An older browser-local demo administrator is **not** the same as a Supabase Clou
 ### The StudySpire home dashboard
 
 The refreshed StudySpire home is the first screen you see. It keeps the original sidebar and has a calm blue-and-lavender hero with the StudySpire spire-and-book icon and the original **Academic AI** subtext. Each of the seven study-tool cards opens a real existing feature; there are no paid upgrades. **Today's Plan** uses assignments and task status from your current profile, and the focus panel opens the existing working focus timer. Friends and Documents take you to your own account's content; the home page does not invent sample classmates, assignments, or files. Mini stays reachable through the small floating icon, and **? Help** opens the on-site guide pulled from this README. The regular Study Center and all earlier account, AI, messaging, and staff screens remain available.
+
+## Cloud profile pictures and moderation
+
+Signed-in StudySpire users can upload a small profile photo. The browser converts the selected JPG/PNG/WebP to a square WebP image (up to 64 KB) and stores it in a private Supabase table using `ss_avatar_set`. Photos can be viewed by other signed-in accounts through restricted read-only RPCs. The photo and its moderation status are **not stored in local study progress or browser-local mock accounts**. There is no public Storage bucket or direct `INSERT/UPDATE` access for browser roles. Only the account holder can upload or remove their photo; new uploads are blocked when an Admin/Owner has restricted them.
+
+Any signed-in account, including a Moderator, can report another user's current photo by exact username, with a reason. Reports include a snapshot of that photo for the staff inbox. Reports cannot target your own account; duplicates for the same picture revision and excessive reporting are blocked. Moderators can review/remove Student photos, Admins can handle Student/Moderator photos and restrict uploads, and Owners can handle any other account. A staff member cannot remove an unreported newer version while reviewing an older report. Reports and restrictions are permission-checked inside Supabase and audited where staff act. After reviewing a report, the stored snapshot is cleared. The migration is documented in `profile-picture-moderation-migration.sql`.
 
 ## Progress, focus and quick actions
 
