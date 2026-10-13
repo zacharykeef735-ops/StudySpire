@@ -502,7 +502,7 @@ function applyStaffFilters(){
 }
 
 async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=role==='owner'||role==='admin';
- const [users,reports,audit]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([])]);
+ const [users,reports,audit,chatFlags]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([]),rpc('ss_staff_chat_flags')]);
  staffData={users,reports,audit};const summary=$('ssCloudAdminSummary');if(summary){summary.replaceChildren();
  const overview=role==='moderator'
    ? [[reports.filter(r=>r.status==='open').length,'Open reports'],[reports.filter(r=>r.status==='reviewed').length,'Reviewed reports']]
@@ -525,6 +525,26 @@ async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=
  staffMsg('Ban action saved.');await renderStaff()}catch(e){staffMsg(e.message)}};row.append(ban)}box.append(row)}
  const reportsBox=$('ssCloudStaffReports');reportsBox.replaceChildren();for(const r of reports){const item=document.createElement('div');item.className='ssc-user';item.dataset.report=(r.about_username+' '+r.reporter_name+' '+r.reason).toLowerCase();item.dataset.status=r.status;const text=document.createElement('div');const line=document.createElement('strong');line.textContent=(r.status==='open'?'OPEN · ':'REVIEWED · ')+(r.about_username||'General report');const detail=document.createElement('small');detail.textContent='From @'+r.reporter_name+' · '+r.reason; text.append(line,detail);item.append(text);
  if(r.status==='open'){const review=document.createElement('button');review.className='ssc-light';review.textContent='Mark reviewed';review.onclick=async()=>{try{await rpc('ss_review_report',{report_id:r.id});await renderStaff()}catch(e){staffMsg(e.message)}};item.append(review)}reportsBox.append(item)}if(!reports.length)reportsBox.textContent='No reports.';
+ // Blocked chat attempts are logged server-side without retaining their message text.
+ let languageFlags=$('ssCloudLanguageFlags');
+ if(!languageFlags){
+  const section=document.createElement('section');section.className='ssc-language-flags';
+  const title=document.createElement('h3');title.textContent='⚑ Blocked chat attempts';
+  const explanation=document.createElement('p');explanation.className='ssc-muted';
+  explanation.textContent='Chat messages containing blocked language are NOT delivered. Only their sender, recipient, category and time are logged.';
+  languageFlags=document.createElement('div');languageFlags.id='ssCloudLanguageFlags';
+  section.append(title,explanation,languageFlags);reportsBox.insertAdjacentElement('afterend',section);
+ }
+ languageFlags.replaceChildren();
+ for(const flag of Array.isArray(chatFlags)?chatFlags:[]){
+  const row=document.createElement('div');row.className='ssc-user';
+  const info=document.createElement('span');
+  info.textContent='@'+flag.sender+' → @'+(flag.recipient||'unknown')+
+    ' · '+(flag.reason==='hateful_language'?'Hateful language':'Profanity')+
+    ' · '+new Date(flag.created_at).toLocaleString();
+  row.append(info);languageFlags.append(row);
+ }
+ if(!chatFlags?.length)languageFlags.textContent='No blocked message attempts.';
  const auditBox=$('ssCloudStaffAudit');auditBox.replaceChildren();for(const a of audit){const item=document.createElement('div');item.className='ssc-audit';item.textContent=`${new Date(a.created_at).toLocaleString()} · @${a.actor_name} · ${a.action} · @${a.target_name} · ${a.details}`;auditBox.append(item)}if(!audit.length)auditBox.textContent='No admin actions yet.';
  applyStaffFilters();staffMsg('Cloud dashboard refreshed.');
 }
