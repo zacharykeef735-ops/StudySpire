@@ -287,12 +287,21 @@ async function signOutCloud(){
  }
 }
 function showBanned(){const gate=$('ssCloudGate')||showGate();gate.hidden=false;if($('ssc-close'))$('ssc-close').hidden=true;$('ssc-loginArea').hidden=true;$('ssc-bannedArea').hidden=false;$('ssc-logout').parentElement.hidden=false;
- const until=profile.banned_until?'until '+new Date(profile.banned_until).toLocaleString():'permanently';$('ssc-banReason').textContent=`Account @${profile.username} banned ${until}. Reason: ${profile.ban_reason||'Admin decision'}`;cloudNotice('You can still export your own flashcards and saved chats.')}
+ const until=profile.banned_until?'until '+new Date(profile.banned_until).toLocaleString():'permanently';
+ const expiry=(!profile.banned_until&&profile.perma_banned_at)
+   ?new Date(Date.parse(profile.perma_banned_at)+30*24*60*60*1000):null;
+ const deletionNotice=expiry&&Number.isFinite(expiry.getTime())
+   ?' This account becomes eligible for automatic deletion after '+expiry.toLocaleDateString()+', with daily processing, unless the ban is lifted.'
+   :'';
+ $('ssc-banReason').textContent='Account @'+profile.username+' banned '+until+'. Reason: '+(profile.ban_reason||'Admin decision')+'.'+deletionNotice;
+ const note=gate.querySelector('#ssc-bannedArea .ssc-caption');
+ if(note)note.textContent=expiry?'Export important study data before the 30-day deadline. Deletion is permanent.':'Your study exports remain available while this temporary ban lasts.';
+ cloudNotice('Your account is banned. Review the ban notice and export options.');}
 function exportMine(kind){const items=remote?.data||studyItems();const result={kind:'study-summit-cloud-export',account:profile?.username,exportedAt:new Date().toISOString(),data:{}};
  for(const [k,v] of Object.entries(items)){if(typeof v!=='string')continue;if(kind==='flash'&&!/(?:suite|card|flash|lab)/i.test(k))continue;if(kind==='chats'&&!/(?:chat|tutor|mini|suite|notes)/i.test(k))continue;
  try{const obj=JSON.parse(v);if(kind==='flash'&&k==='studydock-suite-v1')result.data[k]={cards:obj.cards||[]};else if(kind==='chats'&&k==='studydock-suite-v1')result.data[k]={chats:obj.chats||[]};else result.data[k]=obj}catch{result.data[k]=v}}
  download('study-summit-'+kind+'-'+Date.now()+'.json',result)}
-async function refreshProfile(){if(!person)return false;const {data,error}=await client.from('ss_profiles').select('id,username,role,banned,banned_until,ban_reason').eq('id',person.id).single();
+async function refreshProfile(){if(!person)return false;const {data,error}=await client.from('ss_profiles').select('id,username,role,banned,banned_until,ban_reason,perma_banned_at').eq('id',person.id).single();
  if(error){cloudNotice('Account status unavailable: '+error.message);return false}profile=data;role=profile.role||'student';
  try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}rememberUsername(profile.username);if(banned(profile)){live=false;showBanned();window.dispatchEvent(new Event('ss-cloud-auth-changed'))}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
