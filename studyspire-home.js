@@ -9,17 +9,18 @@ const specs=[
   ['AI Tutor','✦','Get explanations and study help.','answer'],
   ['Flashcards','▤','Create and review flashcards.','quiz'],
   ['Assignments','☑','Manage due dates and tasks.','agenda'],
-  ['Notes','▧','Write and organize notes.','files'],
-  ['Study Planner','▦','Plan your next study session.','agenda'],
-  ['Friends','♧','Chat and share study materials.','friends'],
-  ['Cloud Drive','☁','Access your saved documents.','files']
+  ['Documents','▧','Create notes, organize files, and save documents.','files'],
+  ['Friends','♧','Chat and share study materials.','friends']
 ];
 function navigate(target){
   if(target==='answer'){document.querySelector('.sidebar .nav button[data-page="answer"]')?.click();return}
   const btn=document.querySelector('.sidebar .nav button[data-suite-target="'+target+'"]');
   if(btn){btn.click();return}
-  if(typeof window.switchPage==='function')window.switchPage('suite');
-  else document.querySelector('.sidebar .nav button[data-suite-target="welcome"]')?.click();
+  // Documents is a Study Suite pane, but has no legacy sidebar button of its own.
+  // Activate the existing Suite route first; then select the requested pane.
+  const suiteEntry=document.querySelector('.sidebar .nav button[data-suite-target="agenda"]');
+  if(suiteEntry)suiteEntry.click();
+  else if(typeof window.switchPage==='function')window.switchPage('suite');
   suite()?.showPane(target);
 }
 function updateBrand(){
@@ -119,8 +120,9 @@ function createNav(){
     }
     syncHome();
   });
-  const old=nav.querySelector('button[data-suite-target="welcome"]');
-  if(old){old.title='Study Center';const label=old.querySelector('.sd-navtext');if(label)label.textContent='Study Center'}
+  // Home replaces the redundant legacy Study Center menu entry.
+  // Keep the suite's internal welcome pane so existing tools stay functional.
+  nav.querySelector('button[data-suite-target="welcome"]')?.remove();
   btn.click();
 }
 function createPlanRow(item,kind){
