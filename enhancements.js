@@ -98,6 +98,8 @@ function openMenu(){
  menu.hidden=false;$('ssupSearch').value='';menuRender();$('ssupSearch').focus();
 }
 function compactSidebar(){
+ // StudySummit already has an account-scoped collapsible sidebar. Reuse it.
+ const existing=$('sdSidebarToggle');if(existing){existing.title+=' · Ctrl+B';return}
  const brand=document.querySelector('.sidebar .brand');if(!brand||$('ssupSidebar'))return;
  const btn=button('☰',()=>{
   const compact=!document.body.classList.contains('ssup-compact');document.body.classList.toggle('ssup-compact',compact);btn.setAttribute('aria-pressed',String(compact));
@@ -128,10 +130,12 @@ function init(){
  if(header&&!$('ssupTopActions')){const actions=document.createElement('div');actions.id='ssupTopActions';actions.append(button('📈 Progress',()=>open('progress')),button('🩺 Health',()=>open('health')),button('⌘ K',openMenu));header.append(actions)}
  document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(menu&&!menu.hidden)menu.hidden=true;else openMenu()}
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='b'){const toggle=$('sdSidebarToggle');if(toggle){e.preventDefault();toggle.click()}}
   else if(e.key==='Escape'){if(menu)menu.hidden=true;close()}
   else if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.target?.matches?.('input,textarea,select,[contenteditable]')){e.preventDefault();openMenu()}
  });
- window.addEventListener('ss-suite-updated',observeSuite);
+ let pendingProgress=0;
+ window.addEventListener('ss-suite-updated',()=>{clearTimeout(pendingProgress);pendingProgress=setTimeout(observeSuite,180)});
  window.addEventListener('storage',e=>{if(e.key===key()||e.key===scoped('studydock-suite-v1')||e.key===scoped('ss-study-lab-v374')){if(panel&&!panel.hidden)renderProgress()}});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();if(panel&&!panel.hidden)renderProgress()}});
  observeSuite();simplifyAI();window.StudySummitEnhancements={openProgress:()=>open('progress'),openDiagnostics:()=>open('health'),openCommands:openMenu,observeSuite};
