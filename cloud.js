@@ -71,7 +71,8 @@ function showGate(kind='login'){
    <label for="ssc-nextPass">New password</label><input id="ssc-nextPass" type="password" autocomplete="new-password" placeholder="At least 10 characters"/>
    <label for="ssc-nextPassAgain">Confirm new password</label><input id="ssc-nextPassAgain" type="password" autocomplete="new-password" placeholder="Repeat password"/>
    <button id="ssc-changePassword" type="button" class="ssc-light">Save new password</button><p class="ssc-caption">Other devices must sign in again after changing this password.</p>
-  </details></div><div class="ssc-row"><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
+  </details></div><div class="ssc-row"><button id="ssCloudAvatarEdit" class="ssc-light" type="button">🖼 Profile picture</button><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
+ $('ssCloudAvatarEdit').onclick=()=>{gate.hidden=true;window.StudySpireAvatars?.openOwn();};
  const setMethod=(method)=>{
    authMethod=method;const email=method==='email';
    $('ssc-userRow').hidden=email;$('ssc-emailRow').hidden=!email;
@@ -424,6 +425,7 @@ async function openStaff(){if(!person||!['owner','admin','moderator'].includes(r
  $('ssCloudExportReports').onclick=()=>download('study-summit-reports-'+Date.now()+'.json',{exported:new Date().toISOString(),reports:staffData.reports});
  $('ssCloudExportAudit').onclick=()=>download('study-summit-admin-audit-'+Date.now()+'.json',{exported:new Date().toISOString(),actions:staffData.audit});
  modal.querySelector('.ssc-staffbox').focus();
+ window.StudySpireAvatars?.mountStaff(modal);
  renderStaff().catch(e=>staffMsg(e.message));}
 async function renderRecovery(){
  if(role!=='owner'||!await refreshProfile()||role!=='owner')throw Error('Owner only');
