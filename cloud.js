@@ -415,7 +415,7 @@ const SOCIAL_ALLOWED=new Set([
 ]);
 window.StudySummitMessagingBridge={
  configured:ready,
- account:()=>live&&person&&profile&&!banned(profile)?{id:person.id,username:profile.username,role:profile.role}:null,
+ account:()=>live&&person&&profile&&!banned(profile)?{id:person.id,username:profile.username,...(profile.role?{role:profile.role}:{})}:null,
  rpc:async(name,args)=>{
   if(!SOCIAL_ALLOWED.has(name))throw Error('Unsupported social operation');
   if(!live||!person||!profile||banned(profile))throw Error('Sign in to a Cloud account to use messages');
