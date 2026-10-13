@@ -252,6 +252,7 @@ async function findFriend(){
 }
 function init(){
  const note=pane.querySelector('.sd-notice');
+ const composer=$('sdFriendMessage');if(composer)composer.setAttribute('aria-describedby','sdFriendStatus');
  if(note)note.textContent='☁ StudySpire Cloud messaging: only people who accept friend requests can message you. You can remove or block anyone. Reports share the reported message with staff; other conversations stay private. Avoid sharing personal information.';
  const intro=pane.querySelector('.sd-feature-head p');
  if(intro)intro.textContent='Search by exact StudySpire username, accept requests, chat across devices, and share flashcards privately.';
@@ -278,7 +279,8 @@ function init(){
   if(!text)throw Error('Write a message before sending.');
   if(text.length>2000)throw Error('Messages must be under 2000 characters.');
   if(!selected)throw Error('Choose an accepted friend.');
-  await rpc('ss_social_send',{to_user:selected,message:text});
+  const sentId=await rpc('ss_social_send',{to_user:selected,message:text});
+  if(!sentId)throw Error('⚑ Message blocked: inappropriate language is not allowed in StudySpire chat. This attempt was flagged for staff review. Edit your message and try again.');
   $('sdFriendMessage').value='';lastThreadKey='';await loadThread();
   status('Message delivered to your shared conversation.','good');
  });
