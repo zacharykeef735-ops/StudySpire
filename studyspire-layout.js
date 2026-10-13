@@ -28,7 +28,11 @@
     if(target==='answer')return document.querySelector('.sidebar .nav button[data-page="answer"]')?.click();
     const match=document.querySelector('.sidebar .nav button[data-suite-target="'+target+'"]');
     if(match)return match.click();
-    if(typeof window.switchPage==='function')window.switchPage('suite');
+    // 'files' has no original sidebar route. Navigate through a real Suite
+    // button so the page is activated, then open the document workspace.
+    const suiteEntry=document.querySelector('.sidebar .nav button[data-suite-target="agenda"]');
+    if(suiteEntry)suiteEntry.click();
+    else if(typeof window.switchPage==='function')window.switchPage('suite');
     suite()?.showPane(target);
   }
   function actionNav(label,icon,target){
@@ -85,10 +89,8 @@
     moveOriginal(nav,'button[data-page="answer"]','AI Tutor','tutor');
     moveOriginal(nav,'button[data-suite-target="quiz"]','Flashcards','cards');
     moveOriginal(nav,'button[data-suite-target="agenda"]','Assignments','assignment');
-    nav.append(actionNav('Notes','notes','files'));
-    nav.append(actionNav('Study Planner','planner','agenda'));
+    nav.append(actionNav('Documents','notes','files'));
     moveOriginal(nav,'button[data-suite-target="friends"]','Friends','friends');
-    nav.append(actionNav('Cloud Drive','cloud','files'));
     quickAccess(side,nav);
     const more=document.createElement('details');more.className='ss-more-nav';more.id='ssMoreNav';
     more.innerHTML='<summary>More tools <span aria-hidden="true">⌄</span></summary><div class="ss-more-nav-inner"></div>';
@@ -118,16 +120,14 @@
     const tools=$('ssHomeTools');if(tools){
       tools.querySelectorAll('.ss-tool-card').forEach((b,i)=>{
         const graphic=b.querySelector('.ss-tool-icon');
-        if(graphic)graphic.innerHTML=svg(['tutor','cards','assignment','notes','planner','friends','cloud'][i]);
+        if(graphic)graphic.innerHTML=svg(['tutor','cards','assignment','notes','friends'][i]);
         const subtitle=b.querySelector('small');
         const copy=[
           'Get instant help, explanations, and step-by-step solutions.',
           'Create and study flashcards with AI in seconds.',
           'Track, manage, and get help with your assignments.',
-          'Take smarter notes with AI-powered summaries.',
-          'Plan your study time and stay on track with your goals.',
-          'Study together and keep each other accountable.',
-          'Store and access your study materials anywhere.'
+          'Write notes, organize documents, and keep your materials together.',
+          'Study together and keep each other accountable.'
         ][i];
         if(subtitle)subtitle.textContent=copy;
       });
@@ -226,7 +226,7 @@
     const terms=String(query||'').toLowerCase().trim();if(!terms)return [];
     const results=[];
     const add=(title,kind,action)=>{if(results.length<8)results.push({title,kind,action})};
-    const navigation=[['Home',()=> $('ssHomeNav')?.click()],['AI Tutor',()=>navTo('answer')],['Flashcards',()=>navTo('quiz')],['Assignments',()=>navTo('agenda')],['Notes',()=>navTo('files')],['Study Planner',()=>navTo('agenda')],['Friends',()=>navTo('friends')],['Cloud Drive',()=>navTo('files')],['Settings',()=> $('openSettings')?.click()],['How to Use',()=> $('ssHelpTopButton')?.click()]];
+    const navigation=[['Home',()=> $('ssHomeNav')?.click()],['AI Tutor',()=>navTo('answer')],['Flashcards',()=>navTo('quiz')],['Assignments',()=>navTo('agenda')],['Documents',()=>navTo('files')],['Friends',()=>navTo('friends')],['Settings',()=> $('openSettings')?.click()],['How to Use',()=> $('ssHelpTopButton')?.click()]];
     navigation.forEach(([name,action])=>{if(name.toLowerCase().includes(terms))add(name,'StudySpire tool',action)});
     const data=getData();
     arr(data.docs).forEach(doc=>{if(String(doc?.name||'').toLowerCase().includes(terms))add(String(doc.name).slice(0,85),'Saved document',()=>navTo('files'))});
@@ -256,7 +256,7 @@
       ai.textContent='Ask AI Tutor: “'+query.slice(0,90)+'”';
       ai.addEventListener('click',()=>{closeSearch();askTutor(query)});searchPopup.append(ai);
     }else{
-      const hint=document.createElement('p');hint.textContent='Search your flashcards, notes, and tools. Press Ctrl/⌘ + K to focus.';searchPopup.append(hint);
+      const hint=document.createElement('p');hint.textContent='Search your flashcards, documents, and tools. Press Ctrl/⌘ + K to focus.';searchPopup.append(hint);
     }
     searchPopup.hidden=false;
   }
@@ -284,7 +284,7 @@
     const bar=document.querySelector('.topbar'),actions=bar?.querySelector('.topright');
     if(!bar||!actions||$('ssTopSearch'))return;
     const search=document.createElement('div');search.className='ss-top-search';search.id='ssTopSearch';
-    search.innerHTML='<span class="ss-search-icon" aria-hidden="true"></span><input id="ssSearchInput" type="search" autocomplete="off" spellcheck="false" aria-label="Search notes, flashcards and StudySpire tools" placeholder="Search your notes, flashcards, files, or ask StudySpire anything…"><kbd>⌘ K</kbd><div id="ssSearchPopup" class="ss-search-popup" role="group" aria-label="Search suggestions" hidden></div>';
+    search.innerHTML='<span class="ss-search-icon" aria-hidden="true"></span><input id="ssSearchInput" type="search" autocomplete="off" spellcheck="false" aria-label="Search documents, flashcards and StudySpire tools" placeholder="Search your documents, flashcards, assignments, or ask StudySpire anything…"><kbd>⌘ K</kbd><div id="ssSearchPopup" class="ss-search-popup" role="group" aria-label="Search suggestions" hidden></div>';
     search.querySelector('.ss-search-icon').innerHTML=svg('search');
     bar.insertBefore(search,bar.firstChild);
     searchInput=$('ssSearchInput');searchPopup=$('ssSearchPopup');
