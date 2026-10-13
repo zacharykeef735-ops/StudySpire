@@ -1,4 +1,4 @@
-/* Study Summit Cloud bridge v3.77. Requires cloud-config.js, Supabase JS v2, supabase.sql, and username-login-migration.sql for no-email accounts.
+/* StudySpire Cloud bridge v3.77. Requires cloud-config.js, Supabase JS v2, supabase.sql, and username-login-migration.sql for no-email accounts.
    No service_role keys; authorization for roles/bans is always checked by SQL on the server. */
 (()=>{'use strict';
 const cfg=window.STUDY_SUMMIT_CLOUD||{};
@@ -47,7 +47,7 @@ function setStudy(items){syncing=true;try{if(!items||typeof items!=='object'||Ar
 let authMethod='username',sessionMethod='email';
 function showGate(kind='login'){
  let gate=$('ssCloudGate');if(!gate){gate=document.createElement('section');gate.id='ssCloudGate';document.body.append(gate)}
- gate.hidden=false;gate.innerHTML=`<div class="ssc-shell"><div class="ssc-mark">✦</div><div class="ssc-title-row"><div class="ssc-heading">Study Summit <span>Cloud</span></div><button id="ssc-close" type="button" class="ssc-light" hidden aria-label="Close account menu">✕ Close</button></div>
+ gate.hidden=false;gate.innerHTML=`<div class="ssc-shell"><div class="ssc-mark">✦</div><div class="ssc-title-row"><div class="ssc-heading">StudySpire <span>Cloud</span></div><button id="ssc-close" type="button" class="ssc-light" hidden aria-label="Close account menu">✕ Close</button></div>
  <p id="ssCloudNotice" class="ssc-muted" role="status" aria-live="polite">Your study space, on any device.</p>
  <div id="ssc-loginArea">
   <div class="ssc-methods" role="group" aria-label="Sign-in method"><button type="button" id="ssc-usernameMethod" class="ssc-method">Username + password</button><button type="button" id="ssc-emailMethod" class="ssc-method ssc-light">Older email account</button></div>
@@ -108,7 +108,7 @@ function showGate(kind='login'){
      // Registration is explicit; browser confirm dialogs can be blocked by embedded browsers.
      const createButton=$('ssc-register');createButton.disabled=true;cloudNotice('Creating your username account…');
      let phase='starting a secure session';try{await ensureAnonymous();phase='creating your username account';const {error}=await client.rpc('ss_username_register',{chosen_username,chosen_password:password});
-       if(error)throw Error(error.message);cloudNotice('Account created. Loading Study Summit…');await boot();
+       if(error)throw Error(error.message);cloudNotice('Account created. Loading StudySpire…');await boot();
      }catch(err){const message=String(err?.message||err);cloudNotice('Could not create account ('+phase+'): '+message);if(/sign out before creating another account|session has an account/i.test(message)){$('ssc-logout').parentElement.hidden=false;cloudNotice('This browser already has a username account. Sign out below, then press Create account again.');}}finally{createButton.disabled=false}
      return;
    }
@@ -138,7 +138,7 @@ function showGate(kind='login'){
      let phase='starting a secure session';try{await ensureAnonymous();phase='checking your credentials';const {data,error}=await client.rpc('ss_username_login',{chosen_username,chosen_password:password});
        if(error)throw Error(error.message);
        if(data!==true){cloudNotice('Incorrect username or password, or account temporarily locked.');return}
-       cloudNotice('Signed in. Loading Study Summit…');await boot();
+       cloudNotice('Signed in. Loading StudySpire…');await boot();
      }catch(err){cloudNotice('Could not sign in ('+phase+'): '+(err.message||err));}
      return;
    }
@@ -216,7 +216,7 @@ async function signOutCloud(){
  signingOut=true;
  const logoutButtons=[$('ssc-logout'),$('sdAccountLogout')].filter(Boolean);
  for(const button of logoutButtons){button.disabled=true;button.textContent='Signing out…'}
- cloudNotice('Signing out of Study Summit…');
+ cloudNotice('Signing out of StudySpire…');
  try{
   // A PostgREST rpc() builder is Promise-like, not a Promise with .catch().
   // Session-map cleanup must not block the actual auth sign-out.
@@ -238,7 +238,7 @@ async function signOutCloud(){
   location.reload();
  }catch(error){
   sessionStorage.removeItem('ss-cloud-next-action');cloudNotice('Could not sign out: '+(error?.message||error)+'. Please retry.');
-  console.error('Study Summit cloud sign-out failed:',error);
+  console.error('StudySpire cloud sign-out failed:',error);
  }finally{
   signingOut=false;
   for(const button of logoutButtons){button.disabled=false;button.textContent='Sign out'}
@@ -256,7 +256,7 @@ async function refreshProfile(){if(!person)return false;const {data,error}=await
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
 function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log){log.textContent='Sign out';log.style.display='inline-flex';log.hidden=false;}
  const names={owner:'👑 Owner Dashboard',admin:'🛡 Admin Dashboard',moderator:'⚑ Moderator Dashboard'};
- const staff=Boolean(names[role]),label=names[role]||'Study Summit';
+ const staff=Boolean(names[role]),label=names[role]||'StudySpire';
  for(const id of ['ssCloudStaffBtn','ssCloudOwnerTop','ssCloudOwnerNav','ssCloudOwnerQuick']){
   const btn=$(id);if(!btn)continue;btn.hidden=!staff;
   if(id==='ssCloudOwnerNav'){const name=btn.querySelector('.sd-navtext');if(name)name.textContent=label}
@@ -344,14 +344,14 @@ async function boot(){
  window.addEventListener('beforeunload',()=>{if(live)uploadSnapshot().catch(()=>{})});
  window.addEventListener('focus',()=>refreshProfile());
  setInterval(async()=>{if(!person)return;const ok=await refreshProfile();if(!ok)return;if(banned(profile)){live=false;return}if(live){const nowRemote=await getRemote().catch(()=>null);if(nowRemote&&nowRemote.updated_at!==remote?.updated_at){const local=JSON.stringify(studyItems());if(local===lastSnapshot){remote=nowRemote;setStudy(nowRemote.data);lastSnapshot=JSON.stringify(studyItems());cloudNotice('New cloud updates received. Reload this page to view them.')}else cloudNotice('This account changed on another device. Export a backup before reloading.')}}},45000);
- }catch(err){showGate();cloudNotice('Could not open Study Summit Cloud: '+(err.message||err))}
+ }catch(err){showGate();cloudNotice('Could not open StudySpire Cloud: '+(err.message||err))}
 }
 async function importLegacy(){if(!person||banned(profile))return;const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;try{if(file.size>10000000)throw Error('Backups must be smaller than 10 MB.');const obj=JSON.parse(await file.text());const isLocalBackup=obj.kind==='study-summit-personal-backup'&&obj.items&&typeof obj.items==='object';
  const isCloudExport=obj.kind==='study-summit-cloud-export'&&obj.data&&typeof obj.data==='object';
  if(!isLocalBackup&&!isCloudExport)throw Error('Select a Study Lab personal backup or cloud study export JSON file.');
  const raw=isLocalBackup?obj.items:obj.data;
  const allowed=Object.fromEntries(Object.entries(raw).map(([k,v])=>[k,typeof v==='string'?v:JSON.stringify(v)]).filter(([k,v])=>typeof v==='string'&&v.length<1000000&&(STORE.includes(k)||(/^(studydock|studysync|study-summit|ss-)/.test(k)&&/(chat|doc|flash|note|card|agenda|learning|skill|task|progress|study|personalization)/i.test(k)&&!/(auth|password|credential|token|admin|ban|moderat|role|account)/i.test(k)))).slice(0,100));
- if(!Object.keys(allowed).length)throw Error('No study data found in that backup.');if(!confirm('Import '+Object.keys(allowed).length+' study sections into this cloud account? This replaces the matching sections already here.'))return;setStudy(allowed);await uploadSnapshot();alert('Study backup imported. Reloading Study Summit…');location.reload()}catch(e){alert('Import failed: '+e.message)}};picker.click()}
+ if(!Object.keys(allowed).length)throw Error('No study data found in that backup.');if(!confirm('Import '+Object.keys(allowed).length+' study sections into this cloud account? This replaces the matching sections already here.'))return;setStudy(allowed);await uploadSnapshot();alert('Study backup imported. Reloading StudySpire…');location.reload()}catch(e){alert('Import failed: '+e.message)}};picker.click()}
 async function sendReport(){if(!person||banned(profile))return;const about=prompt('Username involved (optional):','');if(about===null)return;
  const message=prompt('Describe what happened (at least 10 characters):');if(message===null)return;
  const {error}=await client.rpc('ss_report_issue',{about_name:about,complaint:message});alert(error?'Could not send report: '+error.message:'Report received. Staff can review it in Cloud staff.')}
@@ -376,7 +376,7 @@ async function openStaff(){if(!person||!['owner','admin','moderator'].includes(r
  const canAccounts=role==='owner'||role==='admin',canAudit=canAccounts,canRecover=role==='owner';
  const names={owner:'👑 Owner Dashboard',admin:'🛡 Admin Dashboard',moderator:'⚑ Moderator Dashboard'};
  modal.hidden=false;modal.innerHTML=`<div class="ssc-staffbox ss-owner-classic" role="dialog" aria-modal="true" aria-labelledby="ssCloudAdminTitle" tabindex="-1">
- <div class="ssc-title-row ss-owner-heading"><div><div class="eyebrow">${role.toUpperCase()+' CONTROL CENTER'}</div><h2 id="ssCloudAdminTitle">${names[role]}</h2><p class="ssc-muted">${role==='owner'?'Full control · roles, moderation, auditing and recovery':role==='admin'?'Manage Students, Moderators and reports':'Review reports and help keep Study Summit safe'}</p></div><button id="ssCloudStaffClose" class="ssc-light" type="button">✕ Close</button></div>
+ <div class="ssc-title-row ss-owner-heading"><div><div class="eyebrow">${role.toUpperCase()+' CONTROL CENTER'}</div><h2 id="ssCloudAdminTitle">${names[role]}</h2><p class="ssc-muted">${role==='owner'?'Full control · roles, moderation, auditing and recovery':role==='admin'?'Manage Students, Moderators and reports':'Review reports and help keep StudySpire safe'}</p></div><button id="ssCloudStaffClose" class="ssc-light" type="button">✕ Close</button></div>
  <div id="ssCloudAdminSummary" class="ssc-admin-summary"></div><nav class="ssc-staff-tabs" aria-label="Dashboard sections"><button data-staff-tab="accounts" ${canAccounts?'':'hidden'} type="button">👥 Accounts &amp; roles</button><button data-staff-tab="reports" type="button">⚑ Reports</button><button data-staff-tab="history" ${canAudit?'':'hidden'} type="button">◷ Action history</button><button data-staff-tab="recovery" ${canRecover?'':'hidden'} type="button">🔐 Password recovery</button></nav>
  <div id="ssCloudStaffMsg" role="status" aria-live="polite"></div>
  <section class="ssc-admin-section" data-staff-pane="accounts" ${canAccounts?'':'hidden'}><h3>Account management &amp; permissions</h3><p class="ssc-muted">${role==='owner'?'Manage all roles, including Owners. At least one Owner must remain.':'Moderate Students and Moderators. Only Owners can assign roles.'}</p>
