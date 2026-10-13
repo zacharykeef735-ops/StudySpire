@@ -26,8 +26,8 @@ async function lookup(username){
  if(!valid(name))return null;
  if(cache.has(name))return cache.get(name);
  if(requests.has(name))return requests.get(name);
- const bridge=window.StudySpireAvatarBridge;
- if(!bridge?.state?.()||typeof bridge.rpc!=='function')return null;
+ const bridge=window.StudySpirePublicProfileBridge;
+ if(!bridge?.ready?.()||typeof bridge.rpc!=='function')return null;
  const request=bridge.rpc('ss_public_profile',{chosen_username:name})
    .then(data=>{cache.set(name,data||null);return data||null})
    .catch(err=>{console.warn('Verified account role unavailable:',err.message);return null})
@@ -55,4 +55,5 @@ function refreshLabels(){
 window.StudySpireRoles={decorateLabel,lookup,refreshLabels,
  roleName:role=>names[role]||'',isStaffRole:role=>staffRoles.has(role)};
 window.addEventListener('ss-cloud-auth-changed',refreshLabels);
+window.addEventListener('ss-public-profiles-ready',refreshLabels);
 })();
