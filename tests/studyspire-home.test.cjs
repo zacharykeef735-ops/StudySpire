@@ -80,3 +80,30 @@ test('all inline website JavaScript remains syntactically valid',()=>{
   }
   assert.ok(count>=10);
 });
+
+
+test('the screenshot-matched dashboard code is present, connected and executable',()=>{
+  const layout=read('studyspire-layout.js'),styles=read('studyspire-layout.css');
+  assert.doesNotThrow(()=>new Function(layout));
+  assert.match(html,/href="studyspire-layout\.css\?v=3\.91"/);
+  assert.match(html,/src="studyspire-layout\.js\?v=3\.91"/);
+  assert.ok(html.indexOf('studyspire-layout.js?v=3.91')>html.indexOf('studyspire-home.js?v=3.90'));
+  for(const expected of ['ssScreenshotNav','ssTopSearch','ssNotificationButton','ssHomeFriendList',
+    'ssHomeDocumentList','ssQuickCourses','ssHelpTopButton','miniLauncher']){
+    assert.ok(layout.includes(expected),'Missing UI feature: '+expected);
+  }
+  assert.match(styles,/data:image\/webp;base64,/);
+  assert.match(styles,/ss-screenshot-layout/);
+  assert.match(styles,/ss-home-right-stack/);
+});
+
+test('Google Docs paste handoff is absent from Writing Feedback but the editor remains',()=>{
+  for(const old of ['sdDocsHandoff','sdDocsCopy','sdDocsLink','sdDocsBlankLine','sdDocsStatus',
+    'sd-docs-handoff-style','sd-docs-handoff-script','docs.google.com']){
+    assert.ok(!html.includes(old),'Obsolete Google Docs handoff remains: '+old);
+  }
+  for(const retained of ['id="essayDraft"','id="reviewEssay"','id="copyEssay"',
+    'id="downloadEssay"','id="saveEssay"']){
+    assert.ok(html.includes(retained),'Writing tool removed unexpectedly: '+retained);
+  }
+});
