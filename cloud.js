@@ -294,7 +294,7 @@ function installButtons(){document.documentElement.classList.add('ss-cloud-activ
  // The authenticated messaging.js layer takes over this page with private Cloud RPCs.
  // Local-only social handlers are kept only when Cloud is not configured.
  // Keep legacy admin and local role panels hidden even if their own render methods later unhide them.
- const style=document.createElement('style');style.textContent='.ss-cloud-active #ssAdminSidebar,.ss-cloud-active #ssAdminSuiteTab,.ss-cloud-active #ssLabRolesTab,.ss-cloud-active #ssAdminPane,.ss-cloud-active #sdAuthShade,.ss-cloud-active #sdFriendFind,.ss-cloud-active #sdSendMessage,.ss-cloud-active #sdShareDeck{display:none!important}';document.head.append(style);
+ const style=document.createElement('style');style.textContent='.ss-cloud-active #ssAdminSidebar,.ss-cloud-active #ssAdminSuiteTab,.ss-cloud-active #ssLabRolesTab,.ss-cloud-active #ssAdminPane,.ss-cloud-active #sdAuthShade{display:none!important}';document.head.append(style);
  installOwnerNavigation();
  updateHeader();
 }
