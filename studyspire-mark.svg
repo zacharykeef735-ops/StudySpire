@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 270" role="img" aria-labelledby="t"><title id="t">StudySpire — book and rising spire</title><defs><linearGradient id="tower" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8ee1ff"/><stop offset=".47" stop-color="#2773f1"/><stop offset="1" stop-color="#173fca"/></linearGradient><linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d0f5ff"/><stop offset=".43" stop-color="#3e8bf2"/><stop offset="1" stop-color="#6c52d8"/></linearGradient><linearGradient id="warm" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe78f"/><stop offset="1" stop-color="#fa8fa8"/></linearGradient><linearGradient id="violet" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e9a6ff"/><stop offset="1" stop-color="#6450d7"/></linearGradient><radialGradient id="halo"><stop stop-color="#719ffd" stop-opacity=".32"/><stop offset="1" stop-color="#729de9" stop-opacity="0"/></radialGradient></defs>
+<circle cx="132" cy="148" r="110" fill="url(#halo)"/>
+<ellipse cx="129" cy="146" rx="106" ry="64" fill="none" stroke="#61c6fe" stroke-width="2.6" stroke-opacity=".9" transform="rotate(-24 129 146)"/>
+<circle cx="29" cy="171" r="7" fill="#21b3ff"/><circle cx="224" cy="99" r="7" fill="url(#warm)"/>
+<path d="M126 10 120 29 103 33 120 38 126 57 132 38 149 33 132 29Z" fill="#fff4d1"/><path d="M126 19 123 33 126 45 129 33Z" fill="#d9a0ff"/>
+<path d="M126 46 100 146 115 132 122 151 126 224Z" fill="#1e69ec"/><path d="M126 46 151 151 134 134 126 224Z" fill="url(#tower)"/>
+<path d="M126 46 124 222 133 222Z" fill="#d8f7ff" fill-opacity=".85"/>
+<path d="M83 137 113 118 120 141 120 225 83 218Z" fill="url(#tower)" stroke="#b6e7ff" stroke-width="3" stroke-linejoin="round"/>
+<path d="M96 152 107 145 107 166 96 174Z" fill="#d9f7ff"/><path d="M96 152 107 145 107 151 101 156Z" fill="#a1c4ff"/>
+<path d="M143 122 168 142 168 205 143 219Z" fill="url(#warm)" stroke="#fff0ca" stroke-width="3"/>
+<path d="M150 150 163 159M150 161 163 170" stroke="#fff5c9" stroke-width="3" stroke-linecap="round"/>
+<path d="M149 174 187 191 187 220 149 231Z" fill="url(#violet)" stroke="#f1d7ff" stroke-width="3"/>
+<path d="M156 192 180 201M156 202 180 211" stroke="#fff" stroke-opacity=".7" stroke-width="3" stroke-linecap="round"/>
+<path d="M126 236Q105 210 66 212Q48 211 36 218L50 238Q97 225 126 252Q155 225 205 238L220 218Q174 199 126 236Z" fill="url(#page)" stroke="#dbf8ff" stroke-width="4"/>
+<path d="M45 222Q87 215 125 242 163 215 211 222" stroke="#ffffff" stroke-width="3" fill="none" opacity=".94"/><path d="M128 221V250" stroke="#c0edff" stroke-width="4"/>
+</svg>
