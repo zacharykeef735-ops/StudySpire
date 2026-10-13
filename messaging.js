@@ -74,7 +74,8 @@ function renderRequests(){
  for(const req of state.incoming){
   const row=node('div',null,'sd-social-row');
   const main=node('div',null,'sd-social-text');
-  main.append(node('strong','@'+req.username),node('small','Requested '+dateText(req.created_at)));
+  const requestLabel=node('strong','@'+req.username);main.append(requestLabel,node('small','Requested '+dateText(req.created_at)));
+  window.StudySpireRoles?.decorateLabel(requestLabel,req.username);
   const controls=node('div',null,'sd-social-actions');
   controls.append(action('Accept',e=>run(e.currentTarget,async()=>{
    await rpc('ss_social_respond',{request_id:req.id,accept_request:true});
@@ -110,6 +111,7 @@ function renderFriends(){
  for(const friend of active){
   const row=node('div',null,'sd-social-row');
   const label=node('strong','@'+friend.username);
+  window.StudySpireRoles?.decorateLabel(label,friend.username);
   const controls=node('div',null,'sd-social-actions');
   const open=action('Message',()=>{
    selected=friend.id;sel.value=selected;lastThreadKey='';loadThread();
@@ -175,6 +177,7 @@ async function loadThread(){
   for(const msg of messages){
    const mine=msg.from===a.id,bubble=node('div',null,'sd-message-bubble'+(mine?' mine':''));
    const label=node('small',(mine?'You':'@'+friend.username)+' · '+dateText(msg.at));
+   window.StudySpireRoles?.decorateLabel(label,mine?a.username:friend.username);
    const body=node('div',String(msg.text||''));body.className='sd-social-message-body';
    bubble.append(label,body);
    if(!mine){
@@ -236,7 +239,8 @@ async function findFriend(){
   if(pendingSearch!==search)return;
   if(!result)return noItems(host,'No available account with that exact username.');
   const row=node('div',null,'sd-social-row');
-  row.append(node('strong','@'+result.username));
+  const foundLabel=node('strong','@'+result.username);row.append(foundLabel);
+  window.StudySpireRoles?.decorateLabel(foundLabel,result.username);
   let caption='Send friend request',disabled=false;
   if(result.relation==='friend'){caption='Already friends';disabled=true}
   if(result.relation==='outgoing'){caption='Request pending';disabled=true}
