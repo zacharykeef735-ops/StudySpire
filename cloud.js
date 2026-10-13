@@ -6,6 +6,24 @@ const ready=/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(cfg.url||'').
 const $=id=>document.getElementById(id);
 const STORE=['studydock-suite-v1','ss-study-lab-v374','studydock-simple-v1','studydock-mini-notes-v1','studysync-mini-notes-v1','study-summit-personalization-v1','sd-mini-notes-v1','studydock-mini-v1','studydock-ai-v1'];
 let client=null,person=null,profile=null,remote=null,cloudId='',syncTimer=0,syncing=false,live=false,lastSnapshot='',role='student';
+let lastSyncAt=0,lastSyncError='';
+const RECENT_USERNAMES='ss-cloud-account-chooser-v1';
+function savedUsernames(){
+ try{
+  const names=JSON.parse(localStorage.getItem(RECENT_USERNAMES)||'[]');
+  return Array.isArray(names)?[...new Set(names.filter(v=>typeof v==='string'&&/^[a-z0-9_-]{3,32}$/.test(v)))].slice(0,8):[];
+ }catch(_){return []}
+}
+function rememberUsername(username){
+ const name=String(username||'').toLowerCase();
+ if(!/^[a-z0-9_-]{3,32}$/.test(name))return;
+ try{localStorage.setItem(RECENT_USERNAMES,JSON.stringify([name,...savedUsernames().filter(v=>v!==name)].slice(0,8)))}catch(_){}
+}
+function forgetUsername(username){
+ try{localStorage.setItem(RECENT_USERNAMES,JSON.stringify(savedUsernames().filter(v=>v!==username)))}catch(_){}
+}
+window.StudySummitCloudHealth=()=>({configured:ready,signedIn:!!person,username:profile?.username||'',role,active:!!live,syncing:!!syncing,lastSyncAt,syncError:lastSyncError});
+
 const escapeHTML=str=>String(str??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const prefix=()=>`sd-account-${cloudId}::`;
 const localKey=k=>prefix()+k;
@@ -33,28 +51,49 @@ function showGate(kind='login'){
  <p id="ssCloudNotice" class="ssc-muted" role="status" aria-live="polite">Your study space, on any device.</p>
  <div id="ssc-loginArea">
   <div class="ssc-methods" role="group" aria-label="Sign-in method"><button type="button" id="ssc-usernameMethod" class="ssc-method">Username + password</button><button type="button" id="ssc-emailMethod" class="ssc-method ssc-light">Older email account</button></div>
-  <div id="ssc-userRow"><label for="ssc-user">Username</label><input id="ssc-user" autocomplete="username" placeholder="Your username" maxlength="32" spellcheck="false" autocapitalize="none"/></div>
+  <div id="ssc-recent" hidden><b class="ssc-recent-label">Accounts used on this browser</b><div id="ssc-recentList" class="ssc-recentList"></div><p class="ssc-caption">Only usernames are remembered here; sign-in always requires a password.</p></div><div id="ssc-userRow"><label for="ssc-user">Username</label><input id="ssc-user" autocomplete="username" placeholder="Your username" maxlength="32" spellcheck="false" autocapitalize="none"/></div>
   <div id="ssc-emailRow" hidden><label for="ssc-email">Email address</label><input type="email" id="ssc-email" autocomplete="email" placeholder="you@example.com" maxlength="150"/></div>
   <label for="ssc-pass">Password</label><input id="ssc-pass" type="password" autocomplete="current-password" placeholder="At least 10 characters for new accounts" minlength="8"/><button id="ssc-showpass" type="button" class="ssc-light ssc-password-toggle" aria-pressed="false" aria-controls="ssc-pass">Show password</button>
   <div id="ssc-nameRow" hidden><label for="ssc-name">Username for older email account</label><input id="ssc-name" placeholder="Choose a username" maxlength="32" autocomplete="username"/></div>
   <div class="ssc-row"><button id="ssc-login" type="button">Sign in</button><button id="ssc-register" type="button" class="ssc-light">Create account</button></div><button id="ssc-forgot" class="ssc-light ssc-forgot" type="button">Forgot password? Owner-assisted reset</button><div id="ssc-recovery" hidden><p class="ssc-caption">A verified account holder can request a one-time code from an Owner. Your replacement password is only entered here.</p><label for="ssc-resetUser">Username</label><input id="ssc-resetUser" autocomplete="username" maxlength="32" placeholder="Username"/><button id="ssc-requestReset" class="ssc-light" type="button">Request reset</button><label for="ssc-resetCode">Recovery code</label><input id="ssc-resetCode" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code"/><label for="ssc-newPassword">New password</label><input id="ssc-newPassword" autocomplete="new-password" type="password" placeholder="At least 10 characters"/><div class="ssc-row"><button id="ssc-completeReset" type="button">Set new password</button><button id="ssc-cancelReset" class="ssc-light" type="button">Back to sign in</button></div></div>
-  <p id="ssc-recoveryInfo" class="ssc-caption">No email needed for new username accounts. Save your password: self-service password recovery isn't available yet. Owner-assisted recovery is not implemented.</p>
+  <p id="ssc-recoveryInfo" class="ssc-caption">No email needed. If you forget your password, request an Owner-approved six-digit recovery code.</p>
   <p class="ssc-caption">Older Supabase email/Owner accounts remain available via “Older email account.” Browser-only accounts are separate.</p>
  </div>
  <div id="ssc-bannedArea" hidden><h1 class="ssc-banned">YOU ARE BANNED</h1><p id="ssc-banReason" class="ssc-muted"></p>
  <div class="ssc-row"><button id="ssc-flash" type="button">Export flashcards</button><button id="ssc-chats" type="button" class="ssc-light">Export saved chats</button></div>
  <div class="ssc-row"><button id="ssc-all" type="button" class="ssc-light">Export all study data</button><button id="ssc-check" type="button" class="ssc-light">Check ban status</button></div>
  <p class="ssc-caption">Downloads are available for the account owner. A ban doesn't delete your notes.</p></div>
- <div id="ssc-current-actions" hidden><p class="ssc-caption">Your existing account, password and study data will be kept. Creating another account requires signing out first.</p><button id="ssc-new-account" class="ssc-light" type="button">＋ Create another account</button></div><div class="ssc-row"><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
+ <div id="ssc-current-actions" hidden>
+  <p class="ssc-caption">Signed in as @${escapeHTML(profile?.username||'account')}. Switching accounts signs out first; existing study data stays separate.</p>
+  <div class="ssc-row"><button id="ssc-switch-account" class="ssc-light" type="button">⇄ Switch account</button><button id="ssc-new-account" class="ssc-light" type="button">＋ Add account</button></div>
+  <details id="ssc-passwordSettings" class="ssc-change-pass" ${sessionMethod==='username'?'':'hidden'}><summary>🔒 Change my password</summary>
+   <label for="ssc-oldPass">Current password</label><input id="ssc-oldPass" type="password" autocomplete="current-password" placeholder="Current password"/>
+   <label for="ssc-nextPass">New password</label><input id="ssc-nextPass" type="password" autocomplete="new-password" placeholder="At least 10 characters"/>
+   <label for="ssc-nextPassAgain">Confirm new password</label><input id="ssc-nextPassAgain" type="password" autocomplete="new-password" placeholder="Repeat password"/>
+   <button id="ssc-changePassword" type="button" class="ssc-light">Save new password</button><p class="ssc-caption">Other devices must sign in again after changing this password.</p>
+  </details></div><div class="ssc-row"><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
  const setMethod=(method)=>{
    authMethod=method;const email=method==='email';
    $('ssc-userRow').hidden=email;$('ssc-emailRow').hidden=!email;
    $('ssc-nameRow').hidden=true;$('ssc-register').textContent='Create account';
    $('ssc-usernameMethod').classList.toggle('ssc-selected',!email);
    $('ssc-emailMethod').classList.toggle('ssc-selected',email);
-   $('ssc-recoveryInfo').textContent=email?'Older email accounts use Supabase email/password. New registrations may require confirmation depending on your Supabase settings.':'No email needed. Use a strong password and keep it safe; password recovery is not available yet.';
-   $('ssc-pass').value='';$('ssc-pass').type='password';$('ssc-showpass').textContent='Show password';$('ssc-showpass').setAttribute('aria-pressed','false');
+   $('ssc-recoveryInfo').textContent=email?'Older email accounts use Supabase email/password. New registrations may require confirmation depending on your Supabase settings.':'No email needed. Ask an Owner for a six-digit password recovery code if you forget your password.';
+   $('ssc-pass').value='';$('ssc-pass').type='password';$('ssc-showpass').textContent='Show password';$('ssc-showpass').setAttribute('aria-pressed','false');renderRecentAccounts();
  };
+ function renderRecentAccounts(){
+   const host=$('ssc-recent'),list=$('ssc-recentList');if(!host||!list)return;
+   list.replaceChildren();const names=savedUsernames();host.hidden=authMethod!=='username'||!names.length;
+   for(const name of names){
+    const wrap=document.createElement('span');wrap.className='ssc-recentItem';
+    const choose=document.createElement('button');choose.type='button';choose.className='ssc-light';
+    choose.textContent='@'+name;choose.onclick=()=>{$('ssc-user').value=name;$('ssc-pass').focus();cloudNotice('Enter the password for @'+name+'.')};
+    const remove=document.createElement('button');remove.type='button';remove.className='ssc-light';remove.textContent='×';
+    remove.title='Forget @'+name+' from this device';remove.setAttribute('aria-label',remove.title);
+    remove.onclick=()=>{forgetUsername(name);renderRecentAccounts()};
+    wrap.append(choose,remove);list.append(wrap)
+   }
+ }
  $('ssc-usernameMethod').onclick=()=>setMethod('username');
  $('ssc-emailMethod').onclick=()=>setMethod('email');
  $('ssc-showpass').onclick=()=>{const password=$('ssc-pass');const reveal=password.type==='password';password.type=reveal?'text':'password';$('ssc-showpass').textContent=reveal?'Hide password':'Show password';$('ssc-showpass').setAttribute('aria-pressed',String(reveal));};
