@@ -36,6 +36,13 @@
 .ssup-card p{color:#bdc9dd;font-size:13px;margin:8px 0}
 .ssup-card label{display:block;font-size:12px;font-weight:720;margin:9px 0 5px}
 .ssup-card select{background:#0e1a2d;color:white;border:1px solid #4b5c7a;border-radius:8px;padding:9px 10px;font:inherit;max-width:100%}
+.ssup-custom-duration[hidden]{display:none!important}
+.ssup-card .ssup-custom-duration input{
+ display:block;width:100%;max-width:155px;background:#0e1a2d;color:#fff;
+ border:1px solid #4b5c7a;border-radius:8px;padding:9px 10px;font:inherit;
+}
+.ssup-card .ssup-custom-duration input[aria-invalid="true"]{border-color:#f6a9b0}
+.ssup-card .ssup-custom-duration input:focus-visible{outline:2px solid #92bbff;outline-offset:2px}
 .ssup-muted{color:#9cabca!important;font-size:12px!important}
 .ssup-track{height:9px;background:#0b1525;border-radius:9px;overflow:hidden}
 .ssup-track span{display:block;height:100%;width:0;background:#9186ff;border-radius:inherit;transition:width .25s ease}

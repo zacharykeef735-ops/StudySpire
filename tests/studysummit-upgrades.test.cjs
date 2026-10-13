@@ -22,9 +22,9 @@ test('all extracted and newly added scripts have valid JavaScript',()=>{
   }
 });
 test('external scripts load in dependency order and cache-busting version',()=>{
-  const suitePos=html.indexOf('src="suite.js?v=3.80"'),cloudPos=html.indexOf('src="cloud.js?v=4.02"'),enhancementsPos=html.indexOf('src="enhancements.js?v=3.80"');
+  const suitePos=html.indexOf('src="suite.js?v=3.80"'),cloudPos=html.indexOf('src="cloud.js?v=4.02"'),enhancementsPos=html.indexOf('src="enhancements.js?v=3.81"');
   assert.ok(suitePos>0&&cloudPos>suitePos&&enhancementsPos>cloudPos);
-  assert.match(html,/enhancements\.css\?v=3\.83/);
+  assert.match(html,/enhancements\.css\?v=3\.84/);
   assert.ok(html.indexOf('src="help-guide.js?v=3.94"')>enhancementsPos,'Help should load after the study enhancements');
   assert.doesNotMatch(html,/<script id="sd-suite-script">/);
 });

@@ -18,16 +18,67 @@ function observeSuite(){
  p.lastCounters=now;pSave(p);if(panel&&!panel.hidden&&activeTab==='progress')renderProgress();
 }
 function metric(title,value){const el=document.createElement('div');el.className='ssup-metric';const v=document.createElement('strong');v.textContent=String(value);const t=document.createElement('small');t.textContent=title;el.append(v,t);return el}
-let panel=null,menu=null,activeTab='progress',running=false,endTime=0,remaining=1500,chosenMinutes=25,timer=null;
+const validFocusMinutes=value=>{
+ if(value===null||value===undefined||String(value).trim()==='')return null;
+ const n=Number(value);
+ return Number.isInteger(n)&&n>=1&&n<=180?n:null;
+};
+const focusTimeKey=()=>scoped('studydock-quick-focus-minutes-v1');
+function storedFocusMinutes(){try{return validFocusMinutes(localStorage.getItem(focusTimeKey()))||25}catch{return 25}}
+let panel=null,menu=null,activeTab='progress',running=false,endTime=0,chosenMinutes=storedFocusMinutes(),remaining=chosenMinutes*60,timer=null;
 function streak(p){
  let count=0,d=new Date();d.setHours(12,0,0,0);if(!points(p.days[dateKey(d)]))d.setDate(d.getDate()-1);
  while(count<120&&points(p.days[dateKey(d)])){count++;d.setDate(d.getDate()-1)}return count;
 }
-function clock(){const n=$('ssupClock');if(!n)return;const s=Math.max(0,running?Math.ceil((endTime-Date.now())/1000):remaining);n.textContent=pad(Math.floor(s/60))+':'+pad(s%60);const b=$('ssupStart');if(b)b.textContent=running?'Pause':'Start focus'}
+function clock(){
+ const s=Math.max(0,running?Math.ceil((endTime-Date.now())/1000):remaining);
+ const formatted=pad(Math.floor(s/60))+':'+pad(s%60);
+ const display=$('ssupClock');if(display)display.textContent=formatted;
+ const home=$('ssHomeFocusOpen')?.querySelector('.ss-focus-dial strong');if(home)home.textContent=formatted;
+ const b=$('ssupStart');if(b)b.textContent=running?'Pause':'Start focus';
+ const presets=$('ssupLength');if(presets)presets.disabled=running;
+ const custom=$('ssupCustomMinutes');if(custom)custom.disabled=running;
+}
 function pause(){if(running)remaining=Math.max(0,Math.ceil((endTime-Date.now())/1000));running=false;clearInterval(timer);timer=null;clock()}
 function tick(){if(!running)return;remaining=Math.max(0,Math.ceil((endTime-Date.now())/1000));clock();if(remaining===0){pause();const p=pRead();day(p).focus++;day(p).minutes+=chosenMinutes;pSave(p);if($('ssupFocusNote'))$('ssupFocusNote').textContent='Nice work! Session saved. Time for a break 🎉';renderProgress()}}
-function startPause(){if(running){pause();return}if(remaining<=0)remaining=chosenMinutes*60;running=true;endTime=Date.now()+remaining*1000;clearInterval(timer);timer=setInterval(tick,1000);clock()}
-function resetTimer(){pause();chosenMinutes=Number($('ssupLength')?.value)||25;remaining=chosenMinutes*60;clock();if($('ssupFocusNote'))$('ssupFocusNote').textContent='Focus sessions are counted after they finish.'}
+function focusFieldMinutes(){
+ const select=$('ssupLength');
+ return validFocusMinutes(select?.value==='custom'?$('ssupCustomMinutes')?.value:select?.value);
+}
+function syncFocusFields(){
+ const select=$('ssupLength'),input=$('ssupCustomMinutes'),field=$('ssupCustomField');
+ if(!select||!input)return;
+ select.value=[15,25,45].includes(chosenMinutes)?String(chosenMinutes):'custom';
+ input.value=String(chosenMinutes);
+ if(field)field.hidden=select.value!=='custom';
+}
+function resetTimer(){
+ if(running)pause();
+ const value=focusFieldMinutes();
+ if(value===null){
+  const input=$('ssupCustomMinutes');if(input)input.setAttribute('aria-invalid','true');
+  const note=$('ssupFocusNote');if(note)note.textContent='Enter a whole number of minutes from 1 to 180.';
+  return;
+ }
+ chosenMinutes=value;remaining=chosenMinutes*60;
+ try{localStorage.setItem(focusTimeKey(),String(chosenMinutes))}catch(e){console.warn('Focus length could not be saved',e)}
+ $('ssupCustomMinutes')?.removeAttribute('aria-invalid');
+ clock();
+ const note=$('ssupFocusNote');if(note)note.textContent='Ready for '+chosenMinutes+' minutes. Sessions count when finished.';
+}
+function startPause(){
+ if(running){pause();return}
+ if(focusFieldMinutes()===null){resetTimer();$('ssupCustomMinutes')?.focus();return}
+ if(remaining<=0)remaining=chosenMinutes*60;
+ running=true;endTime=Date.now()+remaining*1000;clearInterval(timer);timer=setInterval(tick,1000);clock();
+}
+function selectFocusLength(){
+ if(running)return;
+ const select=$('ssupLength'),field=$('ssupCustomField');
+ if(field)field.hidden=select?.value!=='custom';
+ resetTimer();
+ if(select?.value==='custom')$('ssupCustomMinutes')?.focus();
+}
 function renderProgress(){
  if(!$('ssupMetrics'))return;const p=pRead(),d=day(p),suite=read('studydock-suite-v1'),lab=read('ss-study-lab-v374');
  const tasks=Array.isArray(suite.tasks)?suite.tasks:[],cards=Array.isArray(suite.cards)?suite.cards:[],assignments=Array.isArray(lab.assignments)?lab.assignments:[];
@@ -69,13 +120,14 @@ function createPanel(){
  '<section id="ssupProgress"><div class="ssup-metrics" id="ssupMetrics"></div><div class="ssup-grid">'+
  '<article class="ssup-card"><h3>Daily goal</h3><p id="ssupGoalLabel"></p><div class="ssup-track"><span id="ssupGoalBar"></span></div><label for="ssupGoal">Points per day</label><select id="ssupGoal"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select><p class="ssup-muted">One session, finished task or five reviewed cards = one point.</p></article>'+
  '<article class="ssup-card"><h3>Last seven days</h3><div id="ssupWeek" class="ssup-week"></div><p class="ssup-muted">Activity is saved to your study account.</p></article>'+
- '<article class="ssup-card"><h3>Quick focus ⏱</h3><div id="ssupClock" class="ssup-clock">25:00</div><label for="ssupLength">Session length</label><select id="ssupLength"><option value="15">15 minutes</option><option value="25" selected>25 minutes</option><option value="45">45 minutes</option></select><div class="ssup-actions"><button id="ssupStart" type="button">Start focus</button><button id="ssupReset" type="button">Reset</button></div><p id="ssupFocusNote" class="ssup-muted">Sessions count when finished.</p></article>'+
+ '<article class="ssup-card"><h3>Quick focus ⏱</h3><div id="ssupClock" class="ssup-clock">25:00</div><label for="ssupLength">Session length</label><select id="ssupLength"><option value="15">15 minutes</option><option value="25" selected>25 minutes</option><option value="45">45 minutes</option><option value="custom">Custom time…</option></select><div id="ssupCustomField" class="ssup-custom-duration" hidden><label for="ssupCustomMinutes">Custom minutes (1–180)</label><input id="ssupCustomMinutes" type="number" min="1" max="180" step="1" value="25" inputmode="numeric" aria-describedby="ssupFocusNote"/></div><div class="ssup-actions"><button id="ssupStart" type="button">Start focus</button><button id="ssupReset" type="button">Reset</button></div><p id="ssupFocusNote" class="ssup-muted" role="status" aria-live="polite">Sessions count when finished.</p></article>'+
  '<article class="ssup-card"><h3>Upcoming assignments</h3><div id="ssupUpcoming"></div></article></div>'+
  '<article class="ssup-card"><h3>Today’s suggestion</h3><p id="ssupTip"></p></article><button id="ssupExport" type="button">↓ Export progress</button></section>'+
  '<section id="ssupHealth" hidden><article class="ssup-card"><h3>Device & cloud diagnostics</h3><p>Safe browser information only; no credentials are shown.</p><div class="ssup-actions"><button id="ssupRun" type="button">Run diagnostics</button><button id="ssupCopy" type="button">Copy results</button></div><pre id="ssupDiagOutput" tabindex="0">Press Run diagnostics to check this device.</pre></article></section></div>';
- document.body.append(panel);$('ssupClose').onclick=close;$('ssupTabProgress').onclick=()=>showTab('progress');$('ssupTabHealth').onclick=()=>showTab('health');
+ document.body.append(panel);syncFocusFields();clock();$('ssupClose').onclick=close;$('ssupTabProgress').onclick=()=>showTab('progress');$('ssupTabHealth').onclick=()=>showTab('health');
  $('ssupGoal').onchange=e=>{const p=pRead();p.goal=Number(e.target.value)||3;pSave(p);renderProgress()};
- $('ssupStart').onclick=startPause;$('ssupReset').onclick=resetTimer;$('ssupLength').onchange=()=>{if(!running)resetTimer()};
+ $('ssupStart').onclick=startPause;$('ssupReset').onclick=resetTimer;$('ssupLength').onchange=selectFocusLength;
+ $('ssupCustomMinutes').onchange=()=>{if(!running)resetTimer()};
  $('ssupExport').onclick=exportProgress;$('ssupRun').onclick=()=>diagnostics().catch(e=>{$('ssupDiagOutput').textContent='Diagnostics failed: '+e.message});
  $('ssupCopy').onclick=()=>navigator.clipboard?.writeText($('ssupDiagOutput').textContent).catch(()=>{$('ssupDiagOutput').focus()});
  panel.onclick=e=>{if(e.target===panel)close()};
@@ -139,7 +191,10 @@ function init(){
  window.addEventListener('ss-suite-updated',()=>{clearTimeout(pendingProgress);pendingProgress=setTimeout(observeSuite,180)});
  window.addEventListener('storage',e=>{if(e.key===key()||e.key===scoped('studydock-suite-v1')||e.key===scoped('ss-study-lab-v374')){if(panel&&!panel.hidden)renderProgress()}});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();if(panel&&!panel.hidden)renderProgress()}});
- observeSuite();simplifyAI();window.StudySummitEnhancements={openProgress:()=>open('progress'),openDiagnostics:()=>open('health'),openCommands:openMenu,observeSuite};
+ observeSuite();simplifyAI();
+ // Home is inserted by its own DOMContentLoaded handler, so update its timer after mount.
+ requestAnimationFrame(clock);
+ window.StudySummitEnhancements={openProgress:()=>open('progress'),openDiagnostics:()=>open('health'),openCommands:openMenu,observeSuite};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
