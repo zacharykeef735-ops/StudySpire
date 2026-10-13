@@ -1,4 +1,4 @@
-/* StudySummit Cloud messaging v3.82.
+/* StudySpire Cloud messaging v3.82.
    Uses narrow server-checked RPCs; no browser-local pretend conversations or auth secrets. */
 (()=>{
 'use strict';
@@ -53,7 +53,7 @@ function selectedName(){
 function signedOut(){
  state=emptyOverview();selected='';lastThreadKey='';threadToken++;
  for(const id of ['sdFriendResults','sdFriendRequests','sdFriendsList','sdMessageThread','sdSharedDeckInbox']){
-  const el=$(id);if(el)noItems(el,'Sign in to StudySummit Cloud to use messaging.');
+  const el=$(id);if(el)noItems(el,'Sign in to StudySpire Cloud to use messaging.');
  }
  $('sdMessageFriend')?.replaceChildren(new Option('Sign in first',''));
  noItems($('sdOutgoingRequests'),'Sign in to view outgoing requests.');
@@ -149,7 +149,7 @@ function renderDecks(){
   const importBtn=action('Add to my library',e=>run(e.currentTarget,async()=>{
    if(!cards.length)throw Error('Deck does not contain any cards.');
    const share=window.StudySummitStudyShare;
-   if(!share?.importCards)throw Error('Flashcard library is still loading. Refresh StudySummit and try again.');
+   if(!share?.importCards)throw Error('Flashcard library is still loading. Refresh StudySpire and try again.');
    if(!confirm('Add '+cards.length+' cards from @'+deck.username+' to your library? Your existing cards will not be replaced.'))return;
    const count=share.importCards(cards);
    status('Added '+count+' flashcards from @'+deck.username+'.','good');
@@ -182,10 +182,10 @@ async function loadThread(){
      if(why===null)return;
      const reason=why.trim();
      if(reason.length<10||reason.length>280)throw Error('Please enter 10–280 characters.');
-     if(!confirm('Send this message text and your report to StudySummit moderators for review?'))return;
+     if(!confirm('Send this message text and your report to StudySpire moderators for review?'))return;
      await rpc('ss_social_report_message',{message_id:msg.id,why:reason});
      e.currentTarget.textContent='Reported';
-     status('Message reported to StudySummit staff.','good');
+     status('Message reported to StudySpire staff.','good');
     }),'ss-msg-report');
     bubble.append(report);
    }
@@ -251,14 +251,14 @@ async function findFriend(){
 }
 function init(){
  const note=pane.querySelector('.sd-notice');
- if(note)note.textContent='☁ StudySummit Cloud messaging: only people who accept friend requests can message you. You can remove or block anyone. Reports share the reported message with staff; other conversations stay private. Avoid sharing personal information.';
+ if(note)note.textContent='☁ StudySpire Cloud messaging: only people who accept friend requests can message you. You can remove or block anyone. Reports share the reported message with staff; other conversations stay private. Avoid sharing personal information.';
  const intro=pane.querySelector('.sd-feature-head p');
- if(intro)intro.textContent='Search by exact StudySummit username, accept requests, chat across devices, and share flashcards privately.';
+ if(intro)intro.textContent='Search by exact StudySpire username, accept requests, chat across devices, and share flashcards privately.';
  const chip=pane.querySelector('.sd-feature-head .sd-chip');
  if(chip)chip.textContent='☁ Cloud messaging';
  const safetyNote=pane.querySelector('.sd-suite-pane[data-pane="friends"] > .note');
- if(safetyNote)safetyNote.textContent='Friends must both be signed into StudySummit Cloud. Invitations require approval, and messages are not publicly visible.';
- const search=$('sdFriendSearch');if(search)search.placeholder='Exact StudySummit username (no email)';
+ if(safetyNote)safetyNote.textContent='Friends must both be signed into StudySpire Cloud. Invitations require approval, and messages are not publicly visible.';
+ const search=$('sdFriendSearch');if(search)search.placeholder='Exact StudySpire username (no email)';
  const requests=$('sdFriendRequests'),friends=$('sdFriendsList');
  const outHeading=node('div','Sent invitations','cardtitle'),outgoing=node('div',null,'sd-agenda-list');outgoing.id='sdOutgoingRequests';
  requests.insertAdjacentElement('afterend',outHeading);outHeading.insertAdjacentElement('afterend',outgoing);
