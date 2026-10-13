@@ -13,8 +13,8 @@ test('StudySpire branding and Academic AI appear on the actual site',()=>{
   assert.match(html,/<title>StudySpire \| Academic AI<\/title>/);
   assert.match(html,/href="studyspire-mark\.svg"/);
   assert.match(html,/href="studyspire-home\.css\?v=3\.90"/);
-  assert.match(html,/src="studyspire-home\.js\?v=3\.90"/);
-  assert.match(html,/src="help-guide\.js\?v=3\.93"/);
+  assert.match(html,/src="studyspire-home\.js\?v=3\.94"/);
+  assert.match(html,/src="help-guide\.js\?v=3\.94"/);
   assert.match(html,/src="messaging\.js\?v=3\.92"/);
   assert.match(html,/ACADEMIC AI/);
   assert.doesNotMatch(html,/src="data:image\/webp;base64,/);
@@ -26,7 +26,7 @@ test('StudySpire branding and Academic AI appear on the actual site',()=>{
 test('home scripts load after existing features and tool navigation is complete',()=>{
   assert.doesNotThrow(()=>new Function(js));
   const scripts=['suite.js?v=3.80','cloud.js?v=4.02','enhancements.js?v=3.80',
-    'messaging.js?v=3.92','help-guide.js?v=3.93','studyspire-home.js?v=3.90'];
+    'messaging.js?v=3.92','help-guide.js?v=3.94','studyspire-home.js?v=3.94'];
   const positions=scripts.map(s=>html.indexOf('src="'+s+'"'));
   assert.ok(positions.every(p=>p>0));
   assert.deepEqual([...positions].sort((a,b)=>a-b),positions);
@@ -35,9 +35,9 @@ test('home scripts load after existing features and tool navigation is complete'
   const fakeWindow={};
   vm.runInNewContext(wrapped,{window:fakeWindow,document:{readyState:'loading',addEventListener(){}},console});
   const specs=fakeWindow.__test.specs;
-  assert.equal(specs.length,7);
+  assert.equal(specs.length,5);
   assert.deepEqual(Array.from(specs.map(s=>s[0])),[
-    'AI Tutor','Flashcards','Assignments','Notes','Study Planner','Friends','Cloud Drive'
+    'AI Tutor','Flashcards','Assignments','Documents','Friends'
   ]);
   assert.deepEqual(Array.from(new Set(specs.map(s=>s[3]))).sort(),['agenda','answer','files','friends','quiz']);
   assert.match(js,/__KEEP_STUDYSYNCKSUITE__/);
@@ -85,9 +85,9 @@ test('all inline website JavaScript remains syntactically valid',()=>{
 test('the screenshot-matched dashboard code is present, connected and executable',()=>{
   const layout=read('studyspire-layout.js'),styles=read('studyspire-layout.css');
   assert.doesNotThrow(()=>new Function(layout));
-  assert.match(html,/href="studyspire-layout\.css\?v=3\.91"/);
-  assert.match(html,/src="studyspire-layout\.js\?v=3\.92"/);
-  assert.ok(html.indexOf('studyspire-layout.js?v=3.92')>html.indexOf('studyspire-home.js?v=3.90'));
+  assert.match(html,/href="studyspire-layout\.css\?v=3\.94"/);
+  assert.match(html,/src="studyspire-layout\.js\?v=3\.94"/);
+  assert.ok(html.indexOf('studyspire-layout.js?v=3.94')>html.indexOf('studyspire-home.js?v=3.94'));
   for(const expected of ['ssScreenshotNav','ssTopSearch','ssNotificationButton','ssHomeFriendList',
     'ssHomeDocumentList','ssQuickCourses','ssHelpTopButton','miniLauncher']){
     assert.ok(layout.includes(expected),'Missing UI feature: '+expected);
