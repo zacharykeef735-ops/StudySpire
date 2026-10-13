@@ -2,14 +2,14 @@
 
 **A browser-based study workspace with personal study tools, optional Supabase cloud accounts, role-based moderation, and an experimental on-device AI assistant.**
 
-StudySummit is a static web application: the main interface lives in `index.html`, with account and cloud features in `cloud.js`. It can be hosted using GitHub Pages without running a custom web server. Supabase provides cloud authentication, study-data synchronization, moderation, and password recovery.
+StudySpire is a static web application: the main interface lives in `index.html`, with account and cloud features in `cloud.js`. It can be hosted using GitHub Pages without running a custom web server. Supabase provides cloud authentication, study-data synchronization, moderation, and password recovery.
 
 > **Project status: beta.** The features described below are present in the repository and the database migrations have been applied to the connected project, but end-to-end account recovery, role authorization, cross-device sync, and AI downloads still need testing in real browsers before production use.
 
 ## Contents
 
 - [How to use StudySpire](#how-to-use-studyspire)
-- [What StudySummit does](#what-studysummit-does)
+- [What StudySpire does](#what-studysummit-does)
 - [Progress, focus and quick actions](#progress-focus-and-quick-actions)
 - [How it works](#how-it-works)
 - [Accounts and cloud synchronization](#accounts-and-cloud-synchronization)
@@ -67,11 +67,11 @@ Welcome! You can use most study tools right in your browser. Sign in to a Cloud 
 - If the site looks outdated, refresh after a deployment. If the AI won't load, check hardware acceleration, your connection, and the smallest model.
 <!-- STUDYSPIRE_GUIDE_END -->
 
-## What StudySummit does
+## What StudySpire does
 
-StudySummit combines study and productivity features in a dark-themed browser interface. The application includes study workspace features such as notes, flashcards, study planning and tasks, saved study content, personalization, and an AI study assistant. Available features can vary by page and browser capabilities.
+StudySpire combines study and productivity features in a dark-themed browser interface. The application includes study workspace features such as notes, flashcards, study planning and tasks, saved study content, personalization, and an AI study assistant. Available features can vary by page and browser capabilities.
 
-You can use browser-local study features without creating a cloud account. A StudySummit cloud account adds username/password sign-in, personal cloud study storage, and access to the appropriate dashboard for a user's role.
+You can use browser-local study features without creating a cloud account. A StudySpire cloud account adds username/password sign-in, personal cloud study storage, and access to the appropriate dashboard for a user's role.
 
 **Two distinct kinds of accounts exist:**
 
@@ -80,9 +80,13 @@ You can use browser-local study features without creating a cloud account. A Stu
   
 An older browser-local demo administrator is **not** the same as a Supabase Cloud Owner.
 
+### The StudySpire home dashboard
+
+The refreshed StudySpire home is the first screen you see. It keeps the original sidebar and has a calm blue-and-lavender hero with the StudySpire spire-and-book icon and the original **Academic AI** subtext. Each of the seven study-tool cards opens a real existing feature; there are no paid upgrades. **Today's Plan** uses assignments and task status from your current profile, and the focus panel opens the existing working focus timer. Friends and Documents take you to your own account's content; the home page does not invent sample classmates, assignments, or files. Mini stays reachable through the small floating icon, and **? Help** opens the on-site guide pulled from this README. The regular Study Center and all earlier account, AI, messaging, and staff screens remain available.
+
 ## Progress, focus and quick actions
 
-StudySummit's compact Study Hub adds a dashboard built around the study content you already have:
+StudySpire's compact Study Hub adds a dashboard built around the study content you already have:
 
 - **Progress & Focus:** flashcard counts, finished tasks, completed focus sessions, personal study streaks, daily goals and a seven-day activity chart.
 - **Upcoming assignments:** reads assignments from the existing Study Lab agenda.
@@ -111,7 +115,7 @@ Browser (index.html)
               └── Owner-approved password recovery
 ```
 
-**Local study storage:** StudySummit saves supported study sections in the browser's `localStorage`. Signed-in cloud accounts use account-specific local keys to avoid mixing saved work between accounts.
+**Local study storage:** StudySpire saves supported study sections in the browser's `localStorage`. Signed-in cloud accounts use account-specific local keys to avoid mixing saved work between accounts.
 
 **Cloud synchronization:** `cloud.js` reads supported study data, synchronizes it with `public.ss_study_data`, and restores it for the signed-in profile. Cloud data is scoped by the account's canonical profile ID. Browser storage is not a substitute for a backup.
 
@@ -121,11 +125,11 @@ Browser (index.html)
 
 ### Create a new username account
 
-1. Open the StudySummit website and choose **Cloud account**.
+1. Open the StudySpire website and choose **Cloud account**.
 2. Select **Username + password**.
 3. Enter an available username (3–32 lowercase letters, digits, underscores or hyphens) and a password of at least 10 characters (maximum 72 bytes).
 4. Click **Create account**.
-5. After registration, StudySummit loads the new account's personal study workspace.
+5. After registration, StudySpire loads the new account's personal study workspace.
 
 No email or phone number is required for these username accounts. During beta, `admin` is an allowed username; **having that username does not give administrative permissions**. The server assigns every new account the **Student** role until an Owner promotes it.
 
@@ -133,7 +137,7 @@ No email or phone number is required for these username accounts. During beta, `
 
 Use **Username + password → Sign in** to open an existing account. The account menu offers **⇄ Switch account** and **＋ Add account**; these explicitly sign out of the current account and return to the appropriate screen.
 
-StudySummit remembers up to eight **usernames only** on this browser. Choose a remembered username to fill the sign-in field, then enter its password. **Passwords and active sessions are not stored by this account switcher.** StudySummit does not support being signed into multiple cloud accounts simultaneously in one browser tab.
+StudySpire remembers up to eight **usernames only** on this browser. Choose a remembered username to fill the sign-in field, then enter its password. **Passwords and active sessions are not stored by this account switcher.** StudySpire does not support being signed into multiple cloud accounts simultaneously in one browser tab.
 
 ### Change your own password
 
@@ -155,13 +159,13 @@ Importing study data does **not** transfer roles, passwords, bans, reports, or a
 
 ## Cloud friends and messaging
 
-The **Messages & friends** page now supports private conversations between signed-in StudySummit Cloud accounts on different devices. It keeps the earlier **local-device demo** only if Cloud is not configured; local-demo contacts and messages are not automatically migrated to Cloud.
+The **Messages & friends** page now supports private conversations between signed-in StudySpire Cloud accounts on different devices. It keeps the earlier **local-device demo** only if Cloud is not configured; local-demo contacts and messages are not automatically migrated to Cloud.
 
 ### Add a friend and start a conversation
 
 1. Sign in to your Cloud account.
 2. Open **Messages & friends** in the sidebar or Study Suite tabs.
-3. Enter the person's **exact StudySummit username** (not their email) and select **Search**.
+3. Enter the person's **exact StudySpire username** (not their email) and select **Search**.
 4. Click **Send friend request**.
 5. The other person signs in, opens the page, and clicks **Accept** (or **Decline**).
 6. Select the accepted friend under **Chat with**, write a message and click **Send message**. You can also press **Ctrl/⌘ + Enter** from the message box.
@@ -170,7 +174,7 @@ Messages are saved in Supabase and load on other devices. The page checks for ne
 
 ### Share flashcards
 
-Choose an accepted friend and click **Share my flashcards**. StudySummit sends a copy of up to **25 flashcards** from your library. The recipient can add the deck from **Flashcards shared with you**. Importing **adds** cards to their own collection instead of erasing existing flashcards.
+Choose an accepted friend and click **Share my flashcards**. StudySpire sends a copy of up to **25 flashcards** from your library. The recipient can add the deck from **Flashcards shared with you**. Importing **adds** cards to their own collection instead of erasing existing flashcards.
 
 ### Safety and privacy
 
@@ -178,13 +182,13 @@ Choose an accepted friend and click **Share my flashcards**. StudySummit sends a
 - Use **Remove** to end a friendship or **Block** to prevent future invitations/messages. Unblocking does not restore friendship automatically.
 - **Report** a received message if it violates the rules. The report sends the selected message text and your reason to staff for review; unrelated conversations are not exposed in the staff dashboard.
 - Messages are limited to **2,000 characters**, with per-account spam limits and bounded history loaded in the UI.
-- Conversation content is stored privately on StudySummit's Supabase project. **Messaging is not end-to-end encrypted**, and users should avoid sharing sensitive personal information.
+- Conversation content is stored privately on StudySpire's Supabase project. **Messaging is not end-to-end encrypted**, and users should avoid sharing sensitive personal information.
 - Deleted friendships and blocking stop further conversation access; the system does **not currently** provide message deletion, editing, read receipts, attachments, or push notifications.
 - Server functions require an active, unbanned Cloud account and verify friendship and blocks for each action. The underlying five social tables have RLS enabled and are inaccessible directly to browser API roles.
 
 ## Roles and dashboards
 
-StudySummit has four levels, in descending order:
+StudySpire has four levels, in descending order:
 
 **👑 Owner → 🛡 Admin → ⚑ Moderator → 🎓 Student**
 
@@ -232,7 +236,7 @@ Students use the normal study workspace without staff moderation controls.
 
 ### For someone who forgot their password
 
-1. Sign out of any active StudySummit account.
+1. Sign out of any active StudySpire account.
 2. On the sign-in screen, choose **Forgot password? Owner-assisted reset**.
 3. Enter the username and click **Request reset**.
 4. Contact an Owner so they can independently verify that you own the account.
@@ -257,11 +261,11 @@ The request screen intentionally does not reveal whether a username exists.
 
 ## Browser AI
 
-StudySummit includes an optional browser-based AI assistant using `@mlc-ai/web-llm`. It downloads an AI model into the browser and attempts to run inference on the user's device using supported browser/GPU capabilities.
+StudySpire includes an optional browser-based AI assistant using `@mlc-ai/web-llm`. It downloads an AI model into the browser and attempts to run inference on the user's device using supported browser/GPU capabilities.
 
 **To use it:**
 
-1. Open the AI feature in StudySummit.
+1. Open the AI feature in StudySpire.
 2. Select or load an available model.
 3. Allow time for the initial model download; this may be large.
 4. Watch the progress/status messages and wait for the model to initialize.
@@ -269,7 +273,7 @@ StudySummit includes an optional browser-based AI assistant using `@mlc-ai/web-l
 
 The loader pins **WebLLM 0.2.85** and uses backup CDN sources. Before loading, it checks the model's WebGPU feature and buffer-size requirements, offers a compatible alternative if needed, and displays the model's **estimated GPU memory requirement** from WebLLM (which is *not* the download size). It also remembers the last model successfully initialized on this browser. The supported built-in options include **SmolLM2 360M**, **Llama 3.2 1B** (default), **SmolLM2 1.7B**, and **Llama 3.2 3B**. Earlier Qwen 2.5 selections were removed because they are not present in this WebLLM version's built-in model list. The loader falls back to a compatible supported model if a saved choice is no longer available.
 
-Temporary library/download errors may retry automatically; GPU device or memory failures are not retried in a loop. If the download stays at 0% for over four minutes, StudySummit stops waiting and asks you to **refresh the page before trying again**, to avoid overlapping GPU downloads. If it reports that WebGPU is unavailable, enabling browser graphics acceleration or using another supported browser/device may be necessary.
+Temporary library/download errors may retry automatically; GPU device or memory failures are not retried in a loop. If the download stays at 0% for over four minutes, StudySpire stops waiting and asks you to **refresh the page before trying again**, to avoid overlapping GPU downloads. If it reports that WebGPU is unavailable, enabling browser graphics acceleration or using another supported browser/device may be necessary.
 
 The AI is **experimental** and a full real-device model download has not yet been verified.
 
@@ -305,7 +309,7 @@ Keep `index.html`, `suite.js`, `enhancements.js`, `enhancements.css`, `cloud.js`
 
 ## Supabase setup and migrations
 
-> **For a new Supabase project.** The existing StudySummit project has already had the newer migrations applied. **Do not blindly rerun the original schema on an existing database**: older SQL files contain earlier function definitions that can override later security changes.
+> **For a new Supabase project.** The existing StudySpire project has already had the newer migrations applied. **Do not blindly rerun the original schema on an existing database**: older SQL files contain earlier function definitions that can override later security changes.
 
 1. Create a Supabase project.
 2. In **Authentication**, enable **Anonymous Sign-Ins** (needed for username/password accounts built on anonymous Supabase sessions).
@@ -338,7 +342,7 @@ Keep `index.html`, `suite.js`, `enhancements.js`, `enhancements.css`, `cloud.js`
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | Main StudySummit interface, foundational study tools, and browser AI. |
+| `index.html` | Main StudySpire interface, foundational study tools, and browser AI. |
 | `suite.js` | Extracted ~65 KB study suite logic, separately cached by the browser. |
 | `enhancements.js` | Study progress, focus timer, quick actions, AI settings cleanup, and health diagnostics. |
 | `enhancements.css` | Responsive Study Hub, command search and AI settings styles. |
@@ -411,4 +415,4 @@ The GitHub workflow runs these tests on pull requests and updates to `main`. The
 
 ---
 
-**StudySummit is under active development.** If something breaks, record the browser, steps to reproduce, any visible error, and relevant console output—without sharing passwords, recovery codes, or secret keys.
+**StudySpire is under active development.** If something breaks, record the browser, steps to reproduce, any visible error, and relevant console output—without sharing passwords, recovery codes, or secret keys.
