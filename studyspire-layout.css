@@ -219,7 +219,7 @@ body.ss-brand-ready.ss-screenshot-layout .ss-notification-popup h2{font-size:15p
   overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;
 }
 #page-home .ss-home-tools{
-  grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:13px!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:13px!important;
   margin-top:16px!important;
 }
 #page-home .ss-tool-card{
@@ -345,7 +345,7 @@ body.ss-brand-ready.ss-screenshot-layout #miniPanel{z-index:100021!important}
 @media(max-width:1170px){
   body.ss-brand-ready.ss-screenshot-layout .topbar .ss-top-search kbd{display:none}
   body.ss-brand-ready.ss-screenshot-layout #sdTopAccount.ss-profile-top{min-width:58px;max-width:110px}
-  #page-home .ss-home-tools{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  #page-home .ss-home-tools{grid-template-columns:repeat(3,minmax(0,1fr))!important}
   #page-home .ss-home-lower{grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr)!important}
   #page-home .ss-home-right-stack{grid-column:1/-1;height:200px;grid-template-columns:1fr 1fr;grid-template-rows:1fr}
 }
