@@ -15,6 +15,12 @@
     planner:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h2M14 14h2M8 18h2"/></svg>',
     friends:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 5v1"/></svg>',
     cloud:'<svg viewBox="0 0 24 24"><path d="M7 19h12a4 4 0 0 0 .1-8A6.5 6.5 0 0 0 6.5 9 5 5 0 0 0 7 19Z"/></svg>',
+    topic:'<svg viewBox="0 0 24 24"><path d="M5 4h13a2 2 0 0 1 2 2v14H7a3 3 0 0 1-3-3V6a2 2 0 0 1 1-2Z"/><path d="M4 17a3 3 0 0 1 3-3h13M8 8h8"/></svg>',
+    writing:'<svg viewBox="0 0 24 24"><path d="m4 20 4.8-1.2L20 7.6 16.4 4 5.2 15.2 4 20ZM14 6.4l3.6 3.6M4 22h16"/></svg>',
+    progress:'<svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h17M8 16v-4M13 16V8M18 16V5"/></svg>',
+    saved:'<svg viewBox="0 0 24 24"><path d="M5 3h14a1 1 0 0 1 1 1v17l-8-5-8 5V4a1 1 0 0 1 1-1Z"/></svg>',
+    shield:'<svg viewBox="0 0 24 24"><path d="m12 2 8 4v5c0 5-3.3 8.5-8 11-4.7-2.5-8-6-8-11V6l8-4Z"/><path d="M12 7v6M12 17h.01"/></svg>',
+    settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.3"/><path d="M9.5 2h5l.6 2.6 2 1.1 2.5-.9 2.5 4.4-2 1.8v2.2l2 1.8-2.5 4.4-2.5-.9-2 1.1-.6 2.4h-5l-.6-2.4-2-1.1-2.5.9L2 15l2-1.8V11L2 9.2l2.4-4.4 2.5.9 2-1.1L9.5 2Z"/></svg>',
     search:'<svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.7"/><path d="m16 16 5 5"/></svg>',
     bell:'<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg>',
     plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'
@@ -50,35 +56,13 @@
   function moveOriginal(nav,selector,label,icon){
     const btn=document.querySelector('.sidebar .sd-nav-group .nav '+selector);
     if(!btn)return null;
-    const text=btn.querySelector('.sd-navtext');if(text)text.textContent=label;
+    const text=btn.querySelector('.sd-navtext');
+    const count=text?.querySelector('#ssAdminSideCount');
+    if(text){text.textContent=label;if(count)text.append(' ',count)}
     const pict=btn.querySelector('.navicon');if(pict)pict.innerHTML=svg(icon);
     btn.title=label;btn.setAttribute('aria-label',label);nav.append(btn);
     btn.addEventListener('click',()=>setNavActive(btn));
     return btn;
-  }
-  function quickAccess(side,after){
-    const block=document.createElement('section');block.className='ss-quick-access';block.id='ssQuickAccess';
-    block.innerHTML='<div class="ss-quick-title"><span>Quick Access</span><button id="ssQuickAdd" type="button" aria-label="Add a course" title="Add a course"></button></div><div id="ssQuickCourses" class="ss-quick-courses"></div>';
-    block.querySelector('#ssQuickAdd').innerHTML=svg('plus');
-    block.querySelector('#ssQuickAdd').addEventListener('click',()=>navTo('agenda'));
-    after.insertAdjacentElement('afterend',block);
-    return block;
-  }
-  function updateCourses(){
-    const host=$('ssQuickCourses');if(!host)return;
-    const courseNames=[...new Set(arr(getData().assignments).map(a=>String(a.course||'').trim()).filter(Boolean))].slice(0,6);
-    host.replaceChildren();
-    if(!courseNames.length){
-      const empty=document.createElement('p');empty.className='ss-quick-empty';empty.textContent='Your courses appear here when you add assignments.';host.append(empty);
-    }else courseNames.forEach((name,index)=>{
-      const b=document.createElement('button');b.type='button';b.className='ss-quick-course';b.title='Open assignments for '+name;
-      const dot=document.createElement('span');dot.className='ss-course-dot ss-course-dot-'+(index%4);dot.setAttribute('aria-hidden','true');
-      const text=document.createElement('span');text.textContent=name;b.append(dot,text);
-      b.addEventListener('click',()=>navTo('agenda'));host.append(b);
-    });
-    const add=document.createElement('button');add.type='button';add.className='ss-quick-course ss-add-course';
-    add.innerHTML='<span class="ss-add-circle">+</span><span>Add Course</span>';
-    add.addEventListener('click',()=>navTo('agenda'));host.append(add);
   }
   function installSidebar(){
     const side=document.querySelector('.sidebar');if(!side||$('ssScreenshotNav'))return;
@@ -86,19 +70,30 @@
     const nav=document.createElement('nav');nav.id='ssScreenshotNav';nav.className='nav ss-primary-nav';nav.setAttribute('aria-label','Main StudySpire navigation');
     groups[0].insertAdjacentElement('beforebegin',nav);
     const homeBtn=$('ssHomeNav');if(homeBtn){nav.append(homeBtn);homeBtn.title='Home';homeBtn.setAttribute('aria-label','Home');homeBtn.querySelector('.navicon').innerHTML='<svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg>';homeBtn.addEventListener('click',()=>setNavActive(homeBtn))}
+    // One flat, always-visible column: keep the original page handlers and access checks.
     moveOriginal(nav,'button[data-page="answer"]','AI Tutor','tutor');
+    moveOriginal(nav,'button[data-suite-target="topic"]','Topic lessons','topic');
     moveOriginal(nav,'button[data-suite-target="quiz"]','Flashcards','cards');
+    moveOriginal(nav,'button[data-page="essay"]','Writing feedback','writing');
     moveOriginal(nav,'button[data-suite-target="agenda"]','Assignments','assignment');
+    moveOriginal(nav,'button[data-suite-target="learning"]','Skills & progress','progress');
     nav.append(actionNav('Documents','notes','files'));
     moveOriginal(nav,'button[data-suite-target="friends"]','Friends','friends');
-    quickAccess(side,nav);
-    const more=document.createElement('details');more.className='ss-more-nav';more.id='ssMoreNav';
-    more.innerHTML='<summary>More tools <span aria-hidden="true">⌄</span></summary><div class="ss-more-nav-inner"></div>';
-    $('ssQuickAccess').insertAdjacentElement('afterend',more);
-    const inner=more.querySelector('.ss-more-nav-inner');
-    groups.forEach(group=>inner.append(group));
-    const settings=$('openSettingsSide');if(settings){settings.classList.add('ss-more-settings');inner.append(settings)}
-    updateCourses();
+    moveOriginal(nav,'button[data-page="saved"]','Saved work','saved');
+    moveOriginal(nav,'button[data-suite-target="admin"]','Admin moderation','shield');
+    // Preserve any future sidebar tabs rather than burying them in another menu.
+    groups.forEach(group=>{
+      group.querySelectorAll('.nav > button').forEach(button=>nav.append(button));
+      group.remove();
+    });
+    const settings=$('openSettingsSide');
+    if(settings){
+      settings.className='ss-sidebar-settings';
+      settings.innerHTML='<span class="navicon" aria-hidden="true"></span><span class="sd-navtext">Settings</span>';
+      settings.querySelector('.navicon').innerHTML=svg('settings');
+      settings.title='Settings';settings.setAttribute('aria-label','Settings');
+      nav.append(settings);
+    }
     setNavActive(homeBtn);
   }
   function formatDate(value){
@@ -220,7 +215,7 @@
   }
   function refreshOverview(){
     if(!$('page-home')?.classList.contains('active'))return;
-    renderDocuments();updateCourses();showFriends();void refreshFriends();
+    renderDocuments();showFriends();void refreshFriends();
   }
   function filterResults(query){
     const terms=String(query||'').toLowerCase().trim();if(!terms)return [];

@@ -26,6 +26,23 @@ test('six unique main sidebar destinations, with Study Center removed',()=>{
   assert.match(html,/data-suite="agenda" type="button">▦ Assignments<\/button>/);
 });
 
+test('sidebar displays every existing tool in one vertical column without a dropdown',()=>{
+  for(const selector of [
+    'button[data-suite-target="topic"]',
+    'button[data-page="essay"]',
+    'button[data-suite-target="learning"]',
+    'button[data-page="saved"]',
+    'button[data-suite-target="admin"]'
+  ])assert.ok(layout.includes("moveOriginal(nav,'"+selector+"'"),selector+' is directly in the sidebar');
+  assert.match(layout,/nav\.append\(actionNav\('Documents','notes','files'\)\)/);
+  assert.match(layout,/nav\.append\(settings\)/);
+  assert.match(layout,/groups\.forEach\(group=>\{/);
+  assert.doesNotMatch(layout,/More tools|ssMoreNav|createElement\('details'\)/);
+  assert.doesNotMatch(css,/\.ss-more-nav/);
+  assert.match(css,/\.ss-primary-nav\{[\s\S]*?flex-direction:column/);
+  assert.match(css,/\.ss-primary-nav button\[hidden\]\{display:none!important\}/);
+});
+
 test('five home cards have unique working targets, without duplicate shortcuts',()=>{
   const exposed=home.replace(/\}\)\(\);\s*$/,'window.__cards=specs;})();');
   assert.notEqual(exposed,home);
@@ -80,8 +97,8 @@ test('search and the How to Use guide use canonical labels',()=>{
 
 test('new UI assets are cache-busted without changing stored data formats',()=>{
   assert.match(html,/studyspire-home\.js\?v=3\.94/);
-  assert.match(html,/studyspire-layout\.js\?v=3\.94/);
-  assert.match(html,/studyspire-layout\.css\?v=3\.94/);
+  assert.match(html,/studyspire-layout\.js\?v=3\.95/);
+  assert.match(html,/studyspire-layout\.css\?v=3\.95/);
   assert.match(html,/help-guide\.js\?v=3\.94/);
   assert.match(home,/data\.assignments/);
   assert.match(home,/data\.docs/);

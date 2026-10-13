@@ -61,38 +61,16 @@ body.ss-brand-ready.ss-screenshot-layout #ssQuickAdd svg,
 }
 body.ss-brand-ready.ss-screenshot-layout .ss-primary-nav .navicon svg{width:23px;height:23px}
 body.ss-brand-ready.ss-screenshot-layout .ss-primary-nav .sd-navtext{display:block!important;overflow:hidden;text-overflow:ellipsis}
-body.ss-brand-ready.ss-screenshot-layout .ss-quick-access{flex:none;margin:6px 4px 0;padding-top:17px;border-top:1px solid #2a4161}
-body.ss-brand-ready.ss-screenshot-layout .ss-quick-title{display:flex;align-items:center;justify-content:space-between;color:#9fb4d5;font-size:13px;margin:0 0 12px;padding-left:7px}
-body.ss-brand-ready.ss-screenshot-layout #ssQuickAdd{
-  width:23px;height:23px;color:#a9bcda;display:grid;place-items:center;background:transparent;border:0;padding:3px;
-}
-body.ss-brand-ready.ss-screenshot-layout #ssQuickAdd:hover{color:#fff}
-body.ss-brand-ready.ss-screenshot-layout .ss-quick-courses{display:flex;flex-direction:column;gap:3px}
-body.ss-brand-ready.ss-screenshot-layout .ss-quick-course{
-  width:100%;border:0!important;background:none!important;color:#c4d0e6!important;
-  min-height:30px;padding:4px 6px;display:flex;align-items:center;gap:13px;
-  text-align:left;font-size:12px;font-weight:450;border-radius:8px;
-}
-body.ss-brand-ready.ss-screenshot-layout .ss-quick-course:hover{background:#233957!important}
-body.ss-brand-ready.ss-screenshot-layout .ss-course-dot{width:15px;height:15px;border-radius:50%;background:#72b0ff;flex:none}
-body.ss-brand-ready.ss-screenshot-layout .ss-course-dot-1{background:#a48af1}
-body.ss-brand-ready.ss-screenshot-layout .ss-course-dot-2{background:#edbf75}
-body.ss-brand-ready.ss-screenshot-layout .ss-course-dot-3{background:#66dbc3}
-body.ss-brand-ready.ss-screenshot-layout .ss-add-circle{
-  width:16px;height:16px;line-height:14px;text-align:center;border:1px solid #7894bf;
-  border-radius:50%;font-size:16px;color:#a7bce0;flex:none;
-}
-body.ss-brand-ready.ss-screenshot-layout .ss-quick-empty{font-size:11px;line-height:1.4;color:#879fbe;padding:0 8px;margin:2px 0 8px}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav{margin:0 4px;flex:none;padding:10px 0 0;border-top:1px solid #2a405e;color:#94acc9}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav summary{cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 10px;font-size:12px;border-radius:8px;list-style:none}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav summary:hover{background:#1f3553;color:#e0ebff}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav[open] summary span{transform:rotate(180deg)}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav-inner{margin-top:8px}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav .sd-nav-group{display:block!important;margin:0 0 7px}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav .nav{display:grid!important;grid-template-columns:1fr!important}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav .nav button,
-body.ss-brand-ready.ss-screenshot-layout .ss-more-settings{font-size:12px!important;min-height:36px!important;padding:7px 12px!important}
-body.ss-brand-ready.ss-screenshot-layout .ss-more-nav .nav .navicon{font-size:17px!important}
+/* One flat column: admin routes stay hidden until authorized. */
+body.ss-brand-ready.ss-screenshot-layout .sidebar .ss-primary-nav button[hidden]{display:none!important}
+body.ss-brand-ready.ss-screenshot-layout .app.sd-sidebar-collapsed{grid-template-columns:75px minmax(0,1fr)!important}
+body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar{padding:15px 8px!important}
+body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .brand{flex-direction:column;gap:7px;min-height:0;padding:0 0 11px}
+body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .brand .logo{width:48px!important;height:54px!important;flex:0 0 48px!important}
+body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .brandname,
+body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .brandsub,
+body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .ss-primary-nav .sd-navtext{display:none!important}
+body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .ss-primary-nav button{justify-content:center!important;padding:9px 5px!important}
 body.ss-brand-ready.ss-screenshot-layout .sidebar .sd-profile-side{display:none!important}
 body.ss-brand-ready.ss-screenshot-layout .sidebar .sidebottom{display:none!important}
 body.ss-brand-ready.ss-screenshot-layout .main{
@@ -350,7 +328,13 @@ body.ss-brand-ready.ss-screenshot-layout #miniPanel{z-index:100021!important}
   #page-home .ss-home-right-stack{grid-column:1/-1;height:200px;grid-template-columns:1fr 1fr;grid-template-rows:1fr}
 }
 @media(max-width:900px){
-  body.ss-brand-ready.ss-screenshot-layout .app{grid-template-columns:1fr!important}
+  body.ss-brand-ready.ss-screenshot-layout .app,
+  body.ss-brand-ready.ss-screenshot-layout .app.sd-sidebar-collapsed{grid-template-columns:1fr!important}
+  body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar{padding:15px 17px 19px!important}
+  body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .brand{flex-direction:row;min-height:74px;padding:0 4px 0 6px}
+  body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .brand .logo{width:61px!important;height:69px!important;flex:0 0 61px!important}
+  body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .ss-primary-nav .sd-navtext{display:block!important}
+  body.ss-brand-ready.ss-screenshot-layout .sd-sidebar-collapsed .sidebar .ss-primary-nav button{justify-content:flex-start!important;padding:10px 14px!important}
   body.ss-brand-ready.ss-screenshot-layout .sidebar{position:fixed!important;height:100dvh!important;overflow-y:auto!important;width:min(300px,85vw)!important;z-index:100055}
   body.ss-brand-ready.ss-screenshot-layout .main{padding:13px 14px 30px!important}
   #page-home .ss-home-hero{min-height:255px!important;height:255px!important;padding:27px 31px!important}
