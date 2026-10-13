@@ -85,7 +85,7 @@ test('all inline website JavaScript remains syntactically valid',()=>{
 test('the screenshot-matched dashboard code is present, connected and executable',()=>{
   const layout=read('studyspire-layout.js'),styles=read('studyspire-layout.css');
   assert.doesNotThrow(()=>new Function(layout));
-  assert.match(html,/href="studyspire-layout\.css\?v=3\.92"/);
+  assert.match(html,/href="studyspire-layout\.css\?v=3\.91"/);
   assert.match(html,/src="studyspire-layout\.js\?v=3\.92"/);
   assert.ok(html.indexOf('studyspire-layout.js?v=3.92')>html.indexOf('studyspire-home.js?v=3.90'));
   for(const expected of ['ssScreenshotNav','ssTopSearch','ssNotificationButton','ssHomeFriendList',
