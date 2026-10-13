@@ -84,6 +84,7 @@ function renderRequests(){
    await rpc('ss_social_respond',{request_id:req.id,accept_request:false});
    status('Request declined.','info');await refresh();
   })));
+  controls.append(action('View picture',()=>window.StudySpireAvatars?.openProfile(req.username),'btn secondary small'));
   row.append(main,controls);incoming.append(row);
  }
  if(!state.outgoing.length)noItems(outgoing,'No outgoing requests.');
@@ -126,7 +127,7 @@ function renderFriends(){
    if(selected===friend.id)selected='';
    status('@'+friend.username+' blocked.');await refresh();
   }),'btn ghost small');
-  controls.append(open,remove,block);row.append(label,controls);host.append(row);
+  controls.append(open,action('View / report picture',()=>window.StudySpireAvatars?.openProfile(friend.username),'btn secondary small'),remove,block);row.append(label,controls);host.append(row);
  }
  if(!state.blocked.length)noItems(blocked,'No blocked users.');
  for(const person of state.blocked){
@@ -245,7 +246,7 @@ async function findFriend(){
     const outcome=await rpc('ss_social_request',{chosen_username:search});
     status(outcome==='sent'?'Friend request sent to @'+search+'.':'Request status: '+outcome,'good');
     await refresh();pendingSearch=null;await findFriend();
-  }),'btn primary small');btn.disabled=disabled;row.append(btn);host.append(row);
+  }),'btn primary small');btn.disabled=disabled;row.append(btn,action('View / report picture',()=>window.StudySpireAvatars?.openProfile(result.username),'btn secondary small'));host.append(row);
  }catch(error){noItems(host,'Search failed: '+errorText(error))}
  finally{if(pendingSearch===search)pendingSearch=null}
 }
