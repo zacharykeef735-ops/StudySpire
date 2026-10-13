@@ -192,6 +192,8 @@
     for(const friend of friendsCache.slice(0,4)){
       const row=document.createElement('button');row.type='button';row.className='ss-friend-row';
       const avatar=document.createElement('span');avatar.className='ss-friend-avatar';avatar.textContent=String(friend.username||'?')[0].toUpperCase();
+      // Friend thumbnails are fetched by exact username; only approved WebP images render.
+      window.StudySpireAvatars?.decorate(avatar,friend.username);
       const text=document.createElement('span');text.className='ss-friend-name';text.textContent='@'+String(friend.username||'').slice(0,32);
       const small=document.createElement('span');small.className='ss-friend-hint';small.textContent='Open conversation';
       const labels=document.createElement('span');labels.className='ss-friend-labels';labels.append(text,small);row.append(avatar,labels);
