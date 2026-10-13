@@ -14,8 +14,8 @@ test('StudySpire branding and Academic AI appear on the actual site',()=>{
   assert.match(html,/href="studyspire-mark\.svg"/);
   assert.match(html,/href="studyspire-home\.css\?v=3\.90"/);
   assert.match(html,/src="studyspire-home\.js\?v=3\.90"/);
-  assert.match(html,/src="help-guide\.js\?v=3\.83"/);
-  assert.match(html,/src="messaging\.js\?v=3\.82"/);
+  assert.match(html,/src="help-guide\.js\?v=3\.93"/);
+  assert.match(html,/src="messaging\.js\?v=3\.92"/);
   assert.match(html,/ACADEMIC AI/);
   assert.doesNotMatch(html,/src="data:image\/webp;base64,/);
   assert.match(logo,/<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
