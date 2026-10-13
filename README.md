@@ -12,6 +12,7 @@ StudySummit is a static web application: the main interface lives in `index.html
 - [Progress, focus and quick actions](#progress-focus-and-quick-actions)
 - [How it works](#how-it-works)
 - [Accounts and cloud synchronization](#accounts-and-cloud-synchronization)
+- [Cloud friends and messaging](#cloud-friends-and-messaging)
 - [Roles and dashboards](#roles-and-dashboards)
 - [Password recovery](#password-recovery)
 - [Browser AI](#browser-ai)
@@ -106,6 +107,35 @@ Older email-based users can select **Older email account** and use their existin
 5. Review the imported study sections before deleting any original copy.
 
 Importing study data does **not** transfer roles, passwords, bans, reports, or account identity. Matching study sections in the destination account may be replaced.
+
+## Cloud friends and messaging
+
+The **Messages & friends** page now supports private conversations between signed-in StudySummit Cloud accounts on different devices. It keeps the earlier **local-device demo** only if Cloud is not configured; local-demo contacts and messages are not automatically migrated to Cloud.
+
+### Add a friend and start a conversation
+
+1. Sign in to your Cloud account.
+2. Open **Messages & friends** in the sidebar or Study Suite tabs.
+3. Enter the person's **exact StudySummit username** (not their email) and select **Search**.
+4. Click **Send friend request**.
+5. The other person signs in, opens the page, and clicks **Accept** (or **Decline**).
+6. Select the accepted friend under **Chat with**, write a message and click **Send message**. You can also press **Ctrl/⌘ + Enter** from the message box.
+
+Messages are saved in Supabase and load on other devices. The page checks for new conversations/messages while open (approximately every ten seconds) and also provides a **Refresh** button. This is polling, not a push-notification system.
+
+### Share flashcards
+
+Choose an accepted friend and click **Share my flashcards**. StudySummit sends a copy of up to **25 flashcards** from your library. The recipient can add the deck from **Flashcards shared with you**. Importing **adds** cards to their own collection instead of erasing existing flashcards.
+
+### Safety and privacy
+
+- Friend requests require **recipient approval**. Decline or cancel requests at any time.
+- Use **Remove** to end a friendship or **Block** to prevent future invitations/messages. Unblocking does not restore friendship automatically.
+- **Report** a received message if it violates the rules. The report sends the selected message text and your reason to staff for review; unrelated conversations are not exposed in the staff dashboard.
+- Messages are limited to **2,000 characters**, with per-account spam limits and bounded history loaded in the UI.
+- Conversation content is stored privately on StudySummit's Supabase project. **Messaging is not end-to-end encrypted**, and users should avoid sharing sensitive personal information.
+- Deleted friendships and blocking stop further conversation access; the system does **not currently** provide message deletion, editing, read receipts, attachments, or push notifications.
+- Server functions require an active, unbanned Cloud account and verify friendship and blocks for each action. The underlying five social tables have RLS enabled and are inaccessible directly to browser API roles.
 
 ## Roles and dashboards
 
@@ -250,6 +280,7 @@ Keep `index.html`, `suite.js`, `enhancements.js`, `enhancements.css`, `cloud.js`
    3. `role-permissions-recovery-migration.sql` — role-scoped dashboards and Owner-assisted password recovery.
    4. `six-digit-recovery-codes-migration.sql` — updates recovery functions to use 6-digit codes and invalidates any previously issued long codes.
    5. `self-service-password-change-migration.sql` — allows signed-in username users to change their own password after providing the current password.
+   6. `cloud-messaging-migration.sql` — private friend requests, accepted friendships, private messages, blocking, reports, and shared flashcard decks.
 6. Verify the SQL statements succeeded and that username registration/login work.
 7. Create an initial Owner through a **trusted project-administrator-only database operation** after verifying the intended account. Never let public signup or client-side JavaScript grant Owner privileges.
 8. Deploy the static website and test role permissions with separate accounts.
@@ -266,6 +297,8 @@ Keep `index.html`, `suite.js`, `enhancements.js`, `enhancements.css`, `cloud.js`
 | `suite.js` | Extracted ~65 KB study suite logic, separately cached by the browser. |
 | `enhancements.js` | Study progress, focus timer, quick actions, AI settings cleanup, and health diagnostics. |
 | `enhancements.css` | Responsive Study Hub, command search and AI settings styles. |
+| `messaging.js` | Live Cloud messaging UI: exact-username friend search, requests, chats, blocking/reporting and shared decks. |
+| `messaging.css` | Responsive styling for private Cloud conversations and friends. |
 | `cloud.js` | Supabase client bridge, username sign-in, cloud sync, staff dashboards, and recovery UI. |
 | `cloud-config.js` | Public Supabase project URL and publishable key configuration. |
 | `supabase.sql` | Original/base Supabase schema, reports, profiles, policies, and moderation functions. |
@@ -273,6 +306,7 @@ Keep `index.html`, `suite.js`, `enhancements.js`, `enhancements.css`, `cloud.js`
 | `role-permissions-recovery-migration.sql` | Role restrictions and Owner-reviewed password recovery RPCs, now using 6-digit codes. |
 | `six-digit-recovery-codes-migration.sql` | Incremental update to shorter codes for existing installations. |
 | `self-service-password-change-migration.sql` | Server-verified password change for signed-in username accounts. |
+| `cloud-messaging-migration.sql` | Private social database tables and strictly validated public messaging RPCs. |
 | `README.md` | Project overview, user instructions, setup, architecture, and troubleshooting. |
 | `tests/browser-ai-smoke.test.cjs` | Browser AI startup and model-selection regression checks. |
 | `tests/studysummit-upgrades.test.cjs` | Independent-script, password security, account isolation and progress/health regression checks. |
@@ -284,6 +318,7 @@ Keep `index.html`, `suite.js`, `enhancements.js`, `enhancements.css`, `cloud.js`
 - **Server authorization:** Role and ban enforcement belongs in Supabase functions/RLS, not solely in hidden browser buttons.
 - **Password storage:** Username passwords are hashed in a private Supabase schema. The browser should never receive password hashes.
 - **Custom authentication:** Username accounts use Supabase anonymous sessions and database RPCs, rather than Supabase's standard email/password identity model. Have this design independently reviewed before a large public launch.
+- **Messaging:** Social database tables are private; RPCs require canonical authenticated profiles and active accounts. A sender must be an accepted friend, and blocks are checked on the server. Reported messages are visible to authorized moderators for review.
 - **Role changes:** Only authenticated active Owners should be able to grant Owner privileges; an account named `admin` is not automatically an Admin.
 - **Recovery:** Owners verify requesters manually. Recovery codes are temporary and must be delivered privately.
 - **Data:** Browser storage may be cleared, and sync may fail. Export backups of important study data. New focus sessions and daily study progress are tracked by account, not as a public leaderboard.
@@ -303,6 +338,10 @@ Keep `index.html`, `suite.js`, `enhancements.js`, `enhancements.css`, `cloud.js`
 | **Cloud sync fails** | Open **Health** for last cloud sync status, check the Supabase URL/key and connection, and export a backup before troubleshooting. |
 | **Password change fails** | Use a signed-in username account, enter the correct current password, and check the new password constraints. Repeated wrong passwords can cause a temporary lockout. |
 | **Progress seems empty** | Daily activity begins tracking new reviews/tasks/focus work after upgrading. Older study data still counts toward lifetime metrics but cannot reconstruct historical daily activity. |
+| **Messages don't load** | Verify both people signed into Cloud accounts, reload the page after deployment, check `cloud-messaging-migration.sql`, and use the Refresh button. A request must be accepted first. |
+| **Cannot send a friend request** | Check the exact username, whether a request already exists, whether either person blocked the other, and any cooldown or daily request limit. |
+| **Cannot send a message** | Both accounts must be active friends and unblocked. Check the 2,000-character limit and temporary rate limits. |
+| **Deck import doesn't work** | Check that the recipient's flashcard library has room; imported cards are appended, not overwritten. |
 | **AI stuck or download fails** | Use **SmolLM2 360M** as the smallest option; check WebGPU support, hardware acceleration, device memory, network access to Hugging Face, and browser console. For a 0% stall that times out, reload the page before retrying. The console retains the original error. |
 | **Website shows old version** | Check GitHub Pages deployment and perform a hard refresh to clear cached assets. |
 | **Database RPC/function missing** | Check the migration order and Supabase SQL Editor errors. Do not reapply older migrations over newer ones without reviewing them. |

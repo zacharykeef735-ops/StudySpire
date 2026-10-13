@@ -202,7 +202,8 @@ let socialData=social();function socialSave(){try{localStorage.setItem(SOCIALKEY
 const me=()=>sdAccountId(),pair=(a,b)=>[a,b].sort().join('|');
 const isFriend=u=>socialData.pairs.includes(pair(me(),u));
 function socialHint(msg){set('sdFriendStatus',msg)}
-function renderSocial(){const who=me(),acc=accounts(),lock=window.StudySummitSafety?.status(who)||'',friends=socialData.pairs.filter(p=>p.split('|').includes(who)).map(p=>p.split('|').find(x=>x!==who)).filter(u=>!!acc[u]);
+function renderSocial(){if(window.StudySummitMessagingBridge?.configured){window.StudySummitCloudMessaging?.refreshOnVisit?.();return}
+ const who=me(),acc=accounts(),lock=window.StudySummitSafety?.status(who)||'',friends=socialData.pairs.filter(p=>p.split('|').includes(who)).map(p=>p.split('|').find(x=>x!==who)).filter(u=>!!acc[u]);
  const requestBox=$('sdFriendRequests'),friendBox=$('sdFriendsList'),sel=$('sdMessageFriend');requestBox.replaceChildren();friendBox.replaceChildren();$('sdSendMessage').disabled=!!lock;$('sdShareDeck').disabled=!!lock;if(lock)socialHint(lock);
  if(!who){sdEmpty(requestBox,'Sign in to a local profile first.');sdEmpty(friendBox,'Local profiles can try the friends demo.');sel.replaceChildren(new Option('Sign in first',''));renderThread();renderInbox();return}
  const inc=socialData.requests.filter(r=>r.to===who);if(!inc.length)sdEmpty(requestBox,'No pending requests.');
@@ -304,6 +305,26 @@ const ssOldBackupImport=$('sdBackupImport').onchange;
 $('sdBackupImport').onchange=async e=>{await ssOldBackupImport(e);ssRefreshCardBrowser()};
 ssRefreshCardBrowser();
 
+// Narrow deck interface for messaging.js: never replace the recipient's library.
+window.StudySummitStudyShare={
+ getCards:()=>{
+   const cards=Array.isArray(data.cards)?data.cards:[];
+   return cards.filter(c=>typeof c?.front==='string'&&typeof c?.back==='string'&&c.front.trim()&&c.back.trim())
+     .slice(0,25).map(c=>({front:c.front.slice(0,1800),back:c.back.slice(0,5000)}));
+ },
+ importCards:cards=>{
+   if(!Array.isArray(cards)||!cards.length)throw Error('This deck is empty.');
+   const clean=cards.slice(0,25).filter(c=>typeof c?.front==='string'&&typeof c?.back==='string'&&c.front.trim()&&c.back.trim())
+     .map(c=>({id:id(),front:c.front.slice(0,1800),back:c.back.slice(0,5000),subject:'Shared deck',deck:'From a friend',
+       created:Date.now(),seen:0,known:0}));
+   const room=Math.max(0,3500-data.cards.length);
+   if(clean.length>room)throw Error('Your flashcard library is full. Export or remove some cards before importing.');
+   if(!clean.length)throw Error('No valid flashcards to import.');
+   data.cards.push(...clean);data.cardIndex=data.cards.length-clean.length;save();
+   ssRefreshCardBrowser();showPane('quiz');
+   return clean.length;
+ }
+};
 window.__KEEP_STUDYSYNCKSUITE__={showPane,getData:()=>data,refreshData:()=>{save();ssRefreshCardBrowser();renderCard();renderLearning();renderAgenda()},open:()=>{document.querySelector('[data-page="suite"]')?.click();showPane('welcome')}};
 })();
 
