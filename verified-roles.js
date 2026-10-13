@@ -11,7 +11,7 @@ const cache=new Map();
 const requests=new Map();
 function normalize(name){return String(name||'').replace(/^@/,'').trim().toLowerCase()}
 function paint(label,profile){
- if(!label?.isConnected)return;
+ if(!label)return; // Labels can be decorated before their row is mounted.
  const role=profile?.role;
  let badge=label.querySelector(':scope > .ss-verified-role');
  if(!staffRoles.has(role)){badge?.remove();return}
