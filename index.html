@@ -681,7 +681,7 @@ body{font-size:14px;line-height:1.55}
 </div>
 <section aria-label="Quick notes" class="sd-mini-notes" id="sdMiniNotes">
 <div class="sd-notes-heading"><b>Quick notes</b><span aria-live="polite" id="sdNotesIndicator">Saved locally</span></div>
-<div class="sd-notes-name-field"><label for="sdNotesTitle">Note name — type to rename</label><input aria-label="Note title" autocomplete="off" id="sdNotesTitle" maxlength="120" placeholder="Note title (e.g. Biology — cells)" type="text"/></div>
+<div class="sd-notes-name-field"><label for="sdNotesTitle">Note name — type to rename</label><input aria-label="Note title" autocomplete="off" id="sdNotesTitle" maxlength="120" placeholder="Type a name or rename this note…" type="text"/></div>
 <div class="sd-notes-choose">
 <select aria-label="Switch saved note" id="sdNotesList"><option value="">New note</option></select>
 <button aria-label="Create a note" id="sdNotesNew" title="New note" type="button">＋</button>
@@ -1724,14 +1724,14 @@ const $=id=>document.getElementById(id);
 const app=document.querySelector('.app'),collapse=$('sdSidebarToggle');
 function setCollapsed(v){app.classList.toggle('sd-sidebar-collapsed',v);collapse.textContent=v?'❯':'❮';collapse.title=v?'Expand sidebar':'Collapse sidebar';collapse.setAttribute('aria-label',collapse.title);collapse.setAttribute('aria-expanded',String(!v));try{localStorage.setItem(sdAccountKey('sd-sidebar-collapsed-v1'),String(v))}catch{}}
 try{setCollapsed(localStorage.getItem(sdAccountKey('sd-sidebar-collapsed-v1'))==='true')}catch{setCollapsed(false)}
-function onMobile(){return window.matchMedia('(max-width:760px)').matches}
+function onMobile(){return window.matchMedia('(max-width:900px)').matches}
 const mobileBtn=$('sdMobileMenu'),mobileShade=$('sdMobileShade');
 function closeMobile(){app.classList.remove('sd-mobile-open');mobileBtn?.setAttribute('aria-expanded','false')}
 function openMobile(){app.classList.add('sd-mobile-open');mobileBtn?.setAttribute('aria-expanded','true')}
 if(mobileBtn)mobileBtn.onclick=()=>app.classList.contains('sd-mobile-open')?closeMobile():openMobile();
 if(mobileShade)mobileShade.onclick=closeMobile;
 collapse.onclick=()=>{if(onMobile()){closeMobile();return}setCollapsed(!app.classList.contains('sd-sidebar-collapsed'))};
-document.querySelectorAll('.sidebar .nav button').forEach(b=>b.addEventListener('click',()=>{if(onMobile())closeMobile()}));
+document.querySelector('.sidebar')?.addEventListener('click',e=>{if(onMobile()&&e.target.closest('button')?.id!=='sdSidebarToggle')closeMobile()});
 window.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobile()});
 // Suite sidebar shortcuts have their own destinations. Preserve the core page switcher.
 function syncNavigation(name){document.querySelectorAll('.sidebar .nav button[data-suite-target]').forEach(b=>{
@@ -1828,7 +1828,7 @@ if(suite){suite.showPane('welcome');syncNavigation('welcome')}
     if(next==='notes'){setTimeout(()=>body.focus(),0)}else{document.getElementById('miniQuestion')?.focus()}
     try{localStorage.setItem(key()+':mode',next)}catch(_){}
   }
-  notesTab.onclick=()=>setMode('notes');tutorTab.onclick=()=>{flush();setMode('tutor')};
+  notesTab.onclick=()=>{setMode('notes');setTimeout(()=>title.focus(),0)};tutorTab.onclick=()=>{flush();setMode('tutor')};
   for(const el of [title,subject,body])el.addEventListener(el===subject?'change':'input',scheduleSave);
   list.onchange=()=>{const target=list.value;flush();const pick=entries.find(x=>x.id===target);if(pick)display(pick)};
   newBtn.onclick=newNote;
