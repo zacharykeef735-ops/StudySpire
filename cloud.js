@@ -413,6 +413,19 @@ window.StudySummitMessagingBridge={
   return rpc(name,args);
  }
 };
+// Public profile labels expose only server-verified username, role and bio.
+// This read-only RPC is available even for guests; no client can grant itself a role.
+const PUBLIC_PROFILE_ALLOWED=new Set(['ss_public_profile','ss_public_titles']);
+window.StudySpirePublicProfileBridge={
+ ready:()=>Boolean(client&&ready),
+ rpc:async(name,args)=>{
+  if(!PUBLIC_PROFILE_ALLOWED.has(name))throw Error('Unsupported public profile lookup');
+  if(!client||!ready)throw Error('StudySpire Cloud is not connected');
+  const {data,error}=await client.rpc(name,args||{});
+  if(error)throw Error(error.message);
+  return data;
+ }
+};
 // Photo actions use the existing authenticated Cloud client. Only allowlisted
 // avatar operations are forwarded; all privileges are re-checked by SQL.
 const AVATAR_ALLOWED=new Set([
@@ -612,7 +625,7 @@ if(!ready){
 }
 showGate('loading');
 function startCloud(){if(!window.supabase?.createClient){cloudNotice('Cloud library failed to load. Reload with an internet connection.');return}
- client=window.supabase.createClient(cfg.url.trim().replace(/\/$/,''),cfg.publishableKey.trim());boot()}
+ client=window.supabase.createClient(cfg.url.trim().replace(/\/$/,''),cfg.publishableKey.trim());window.dispatchEvent(new Event('ss-public-profiles-ready'));boot()}
 if(window.supabase?.createClient)startCloud();
 else {const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';script.onload=startCloud;
  script.onerror=()=>cloudNotice('Could not load the Cloud library. Check your internet connection or browser extensions.');document.head.append(script)}
