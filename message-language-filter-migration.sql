@@ -38,7 +38,7 @@ $$;
 revoke all on function ss_private.ss_chat_language_violation(text) from public,anon,authenticated;
 
 create or replace function public.ss_chat_language_check(message text)
-returns text language plpgsql immutable security definer set search_path = '' as $
+returns text language plpgsql immutable security definer set search_path = '' as $$
 begin
   return ss_private.ss_chat_language_violation(message);
 end;
