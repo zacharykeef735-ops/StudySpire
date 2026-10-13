@@ -88,6 +88,7 @@ const commands=[
  ['🩺 Device diagnostics','gpu cloud',()=>open('health')],
  ['⚙ Settings & AI','theme ai',()=>$('openSettings')?.click()],
  ['☁ Manage account','password switch sign in',()=>$('sdAccountOpen')?.click()],
+ ['💬 Messages & friends','messages friends requests chat sharing',()=>document.querySelector('button[data-suite-target="friends"]')?.click()],
  ['📚 Saved work','history notes',()=>document.querySelector('button[data-page="saved"]')?.click()],
  ['✦ Ask the tutor','question',()=>document.querySelector('button[data-page="answer"]')?.click()]
 ];
