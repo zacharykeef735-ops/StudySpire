@@ -92,7 +92,7 @@ test('shared decks are added without replacing existing flashcards',()=>{
  assert.match(suite,/StudySummitStudyShare=/);
  assert.match(suite,/data\.cards\.push\(\.\.\.clean\)/);
  assert.match(suite,/3500-data\.cards\.length/);
- assert.match(ui,/Share my flashcards/);
+ assert.match(ui,/\$\('sdShareDeck'\)\.onclick/);
  assert.match(sql,/jsonb_array_length\(shared_cards\) not between 1 and 25/);
  assert.match(sql,/octet_length\(shared_cards::text\)>30000/);
  assert.match(ui,/share\.importCards\(cards\)/);
