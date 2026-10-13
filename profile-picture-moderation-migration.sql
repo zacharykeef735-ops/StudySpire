@@ -84,13 +84,13 @@ begin
     if char_length(p_image_data)>95000 or p_image_data !~ '^data:image/webp;base64,[A-Za-z0-9+/]+={0,2}$' then
       raise exception 'Use a small WebP profile image'; end if;
     begin
-      data_bytes := pg_catalog.decode(pg_catalog.substring(p_image_data from 24),'base64');
+      data_bytes := pg_catalog.decode(pg_catalog.substring(p_image_data,24),'base64');
     exception when others then
       raise exception 'Invalid profile image data';
     end;
     if pg_catalog.octet_length(data_bytes)<16 or pg_catalog.octet_length(data_bytes)>65536
-      or pg_catalog.substring(data_bytes from 1 for 4)<>pg_catalog.decode('52494646','hex')
-      or pg_catalog.substring(data_bytes from 9 for 4)<>pg_catalog.decode('57454250','hex') then
+      or pg_catalog.substring(data_bytes,1,4)<>pg_catalog.decode('52494646','hex')
+      or pg_catalog.substring(data_bytes,9,4)<>pg_catalog.decode('57454250','hex') then
       raise exception 'Only verified WebP files up to 64 KB are supported';
     end if;
   end if;
