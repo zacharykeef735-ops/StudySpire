@@ -1,4 +1,4 @@
-# StudySummit 📚
+# StudySpire 📚
 
 **A browser-based study workspace with personal study tools, optional Supabase cloud accounts, role-based moderation, and an experimental on-device AI assistant.**
 
@@ -8,6 +8,7 @@ StudySummit is a static web application: the main interface lives in `index.html
 
 ## Contents
 
+- [How to use StudySpire](#how-to-use-studyspire)
 - [What StudySummit does](#what-studysummit-does)
 - [Progress, focus and quick actions](#progress-focus-and-quick-actions)
 - [How it works](#how-it-works)
@@ -21,6 +22,50 @@ StudySummit is a static web application: the main interface lives in `index.html
 - [Repository files](#repository-files)
 - [Security and limitations](#security-and-limitations)
 - [Troubleshooting](#troubleshooting)
+
+<!-- STUDYSPIRE_GUIDE_START -->
+## How to use StudySpire
+
+Welcome! You can use most study tools right in your browser. Sign in to a Cloud account if you want account-based study storage, messaging, and staff features.
+
+### 1. Find your way around
+- **AI Tutor** is for questions, explanations, and help with practice.
+- **Dashboard** opens the Study Suite, including flashcards, notes, agenda, and other tools.
+- **Mini** is the small floating ✦ assistant. Open it from its launcher; if hidden, enable it in **Settings → AI & Mini**.
+- **Help (?)** in the top-right opens this guide any time.
+
+### 2. Ask the AI tutor
+1. Open **AI Tutor** and type a question or upload a worksheet.
+2. For on-device AI, go to **Settings → AI & Mini**, choose an available model, and select **Load browser AI**.
+3. Wait for the first model download and initialization, then ask your question. Smaller models work on more devices.
+4. If loading fails, open **Health** for a WebGPU check or try the smallest model. Browser AI is experimental.
+
+### 3. Make flashcards, notes, and plans
+1. Open **Flashcards & quizzes** in the sidebar or Study Suite to create and practice cards.
+2. Use **Notes** to save study material, and **Agenda** to organize assignments and tasks.
+3. Mark completed tasks and practice cards to build your study-progress history.
+4. Use **Progress** in the top bar for goals, study streaks, and the Quick Focus timer.
+
+### 4. Sign in and protect your work
+1. Open **Account** in the top-right to create a username/password Cloud account or sign in.
+2. A username account does not require an email. Use a unique username and a strong password.
+3. Use **Manage account** to switch accounts or change your password while signed in.
+4. If you forget a username-account password, select **Forgot password?** and request a six-digit, Owner-approved recovery code.
+5. Export important work as a backup. Browser-local work can disappear if your browser storage is cleared.
+
+### 5. Message friends and share flashcards
+1. Sign into Cloud, open **Messages & friends**, and search by an exact StudySpire username.
+2. Send a friend request. The recipient must **Accept** before either person can chat.
+3. Choose an accepted friend to exchange messages or share a copy of flashcards.
+4. Use **Block** or **Report** when necessary. Messaging isn't end-to-end encrypted; avoid sharing private information.
+
+### 6. Handy shortcuts and troubleshooting
+- **Ctrl/⌘ + K:** Open Quick Actions to find a feature.
+- **Ctrl/⌘ + B:** Collapse or expand the sidebar.
+- **Ctrl + Shift + Space:** Toggle the floating Mini, when enabled.
+- **Health:** See browser GPU compatibility, cloud connection, and AI loading errors.
+- If the site looks outdated, refresh after a deployment. If the AI won't load, check hardware acceleration, your connection, and the smallest model.
+<!-- STUDYSPIRE_GUIDE_END -->
 
 ## What StudySummit does
 

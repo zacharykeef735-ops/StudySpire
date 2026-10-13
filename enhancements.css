@@ -71,3 +71,72 @@
  .ssup-sidebar-button{display:none}
 }
 @media(prefers-reduced-motion:reduce){.ssup-track span{transition:none!important}}
+
+
+/* StudySpire README help: one compact top-right button + accessible guide modal. */
+#ssHelpTopButton.ss-help-trigger{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  flex:none;min-height:35px;padding:7px 10px;border:1px solid #384c70;
+  border-radius:10px;background:#15233a;color:#e4edff;white-space:nowrap;
+  font:650 12px/1.1 system-ui,sans-serif;cursor:pointer;
+}
+#ssHelpTopButton .ss-help-mark{
+  display:inline-grid;place-items:center;width:18px;height:18px;
+  border-radius:50%;background:#3b65ae;color:white;font-size:12px;font-weight:800;
+}
+#ssHelpTopButton:hover{background:#1b3052;border-color:#8cacfa}
+#ssHelpTopButton:focus-visible,#ssHelpOverlay button:focus-visible,
+#ssHelpOverlay a:focus-visible{outline:2px solid #9bb9ff;outline-offset:3px}
+#ssHelpTopButton[aria-expanded="true"]{border-color:#91b6fa;background:#20365d}
+#ssHelpOverlay[hidden]{display:none!important}
+#ssHelpOverlay{
+  position:fixed;inset:0;z-index:100200;display:flex;
+  align-items:center;justify-content:center;overflow:auto;
+  background:rgba(4,10,23,.78);padding:18px;
+}
+.ss-help-dialog{
+  display:flex;flex-direction:column;width:min(720px,100%);max-height:min(92dvh,920px);
+  overflow:hidden;border-radius:17px;border:1px solid #3e5070;
+  background:#111e33;color:#e8f1ff;
+  box-shadow:0 18px 60px #0008;
+}
+.ss-help-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  padding:20px 24px 17px;border-bottom:1px solid #32445f;
+}
+.ss-help-head h2{margin:6px 0 5px;font:800 clamp(20px,3vw,25px)/1.25 system-ui,sans-serif;color:#f5f8ff}
+.ss-help-head p{margin:0;color:#a8b9d8;font-size:12px}
+.ss-help-eyebrow{color:#95baff;font-size:10px;font-weight:850;letter-spacing:1.4px}
+#ssHelpClose{
+  display:grid;place-items:center;flex:none;width:36px;height:36px;
+  border:1px solid #42516c;border-radius:10px;background:#1b2c48;
+  color:#f1f5ff;cursor:pointer;font-size:17px;
+}
+#ssHelpClose:hover{background:#29446c}
+.ss-help-body{
+  min-height:0;overflow-y:auto;padding:22px 26px;overscroll-behavior:contain;
+  font:400 14px/1.65 system-ui,sans-serif;scrollbar-width:thin;
+}
+.ss-help-body h3{color:#c1d7ff;margin:23px 0 9px;font:750 16px/1.35 system-ui,sans-serif}
+.ss-help-body h3:first-child{margin-top:0}
+.ss-help-body p{margin:0 0 13px;color:#dae4f5}
+.ss-help-body ul,.ss-help-body ol{padding-left:24px;margin:7px 0 18px}
+.ss-help-body li{margin:7px 0;max-width:65ch;overflow-wrap:anywhere}
+.ss-help-body li::marker{color:#86b2ff}
+.ss-help-body strong{font-weight:750;color:#fff}
+.ss-help-footer{
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+  padding:14px 24px;border-top:1px solid #32445f;font-size:12px;color:#9fb0c9;
+}
+.ss-help-footer a{color:#a6c8ff;font-weight:700;text-decoration:none}
+.ss-help-footer a:hover{text-decoration:underline}
+@media(max-width:720px){
+  #ssHelpTopButton{min-width:35px;padding:7px!important}
+  #ssHelpTopButton .ss-help-label{display:none}
+  #ssHelpOverlay{padding:8px}
+  .ss-help-dialog{max-height:calc(100dvh - 16px);border-radius:13px}
+  .ss-help-head{padding:16px 17px 12px}
+  .ss-help-body{padding:15px 19px;font-size:13px}
+  .ss-help-footer{padding:12px 17px}
+}
+@media(prefers-reduced-motion:reduce){#ssHelpTopButton{transition:none!important}}
