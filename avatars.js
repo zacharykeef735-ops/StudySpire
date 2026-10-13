@@ -132,15 +132,37 @@ async function refreshOwn(){
 }
 async function openOwn(){
   if(!account())return;
-  openShell('Your profile picture');
+  openShell('Your profile & bio');
   status(dialogStatus,'Loading your account picture…');
   try{
     const response=await rpc('ss_avatar_me');
+    const profile=await rpc('ss_public_profile',{chosen_username:response.username});
     me=response;updateHeader();
     const block=node('div',null,'ss-avatar-edit-layout');
     const pic=preview(response.image_data,response.username[0]?.toUpperCase());
     const side=node('div',null,'ss-avatar-edit-fields');
-    side.append(node('strong','@'+response.username));
+    const ownName=node('strong','@'+response.username);
+    side.append(ownName);
+    window.StudySpireRoles?.decorateLabel(ownName,response.username,account()?.role);
+    const bioLabel=node('label','Your bio · 180 characters max');
+    bioLabel.htmlFor='ssAvatarBio';
+    const bioField=node('textarea');bioField.id='ssAvatarBio';bioField.rows=3;bioField.maxLength=180;
+    bioField.placeholder='Write a little about yourself or your favorite school subjects…';
+    bioField.value=profile?.bio||'';
+    bioField.setAttribute('aria-label','Edit your account bio');
+    const saveBio=button('Save bio',async()=>{
+      saveBio.disabled=true;
+      try{
+        const saved=await rpc('ss_profile_set_bio',{new_bio:bioField.value});
+        bioField.value=saved.bio||'';
+        status(dialogStatus,'Bio saved. Anyone can view it on your profile.');
+        window.StudySpireRoles?.refreshLabels();
+      }catch(e){status(dialogStatus,e.message,true)}
+      finally{saveBio.disabled=false}
+    },'ss-avatar-button secondary');
+    const bioArea=node('div',null,'ss-avatar-bio-editor');
+    bioArea.append(bioLabel,bioField,saveBio);
+    side.append(bioArea);
     const info=node('p','Profile pictures are visible to other signed-in StudySpire users.','ss-avatar-hint');
     side.append(info);
     const blocked=Boolean(response.restricted);
@@ -189,13 +211,18 @@ async function openProfile(username){
   openShell('Profile picture · @'+name);
   status(dialogStatus,'Loading picture…');
   try{
-    const data=await rpc('ss_avatar_public',{chosen_username:name});
+    const [data,profile]=await Promise.all([
+      rpc('ss_avatar_public',{chosen_username:name}),
+      rpc('ss_public_profile',{chosen_username:name})
+    ]);
     if(!data){status(dialogStatus,'Account not available.',true);return}
     const main=node('div',null,'ss-avatar-profile');
     const pic=preview(data.image_data,name[0].toUpperCase());
     const h=node('strong','@'+name);
+    window.StudySpireRoles?.decorateLabel(h,name);
+    const bio=node('p',profile?.bio||'No bio yet.','ss-avatar-bio-display');
     const help=node('p',data.image_data?'Profile picture shared with signed-in StudySpire users.':'This account has no profile picture.','ss-avatar-hint');
-    main.append(pic,h,help);
+    main.append(pic,h,bio,help);
     if(data.image_data){
       const reason=node('textarea');reason.id='ssAvatarReportReason';
       reason.placeholder='Describe why this profile picture should be reviewed (10–500 characters)';
