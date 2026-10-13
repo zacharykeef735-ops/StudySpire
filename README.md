@@ -30,7 +30,7 @@ Welcome! You can use most study tools right in your browser. Sign in to a Cloud 
 
 ### 1. Find your way around
 - **AI Tutor** is for questions, explanations, and help with practice.
-- **Dashboard** opens the Study Suite, including flashcards, notes, agenda, and other tools.
+- **Home** shows your study tools. **Assignments** includes calendar and study planning, while **Documents** combines notes and saved files.
 - **Mini** is the small floating ✦ assistant. Open it from its launcher; if hidden, enable it in **Settings → AI & Mini**.
 - **Help (?)** in the top-right opens this guide any time.
 
@@ -41,8 +41,8 @@ Welcome! You can use most study tools right in your browser. Sign in to a Cloud 
 4. If loading fails, open **Health** for a WebGPU check or try the smallest model. Browser AI is experimental.
 
 ### 3. Make flashcards, notes, and plans
-1. Open **Flashcards & quizzes** in the sidebar or Study Suite to create and practice cards.
-2. Use **Notes** to save study material, and **Agenda** to organize assignments and tasks.
+1. Open **Flashcards** in the sidebar or Home to create and practice cards.
+2. Use **Documents** to create notes and manage saved documents, and **Assignments** to organize tasks, due dates, and study planning.
 3. Mark completed tasks and practice cards to build your study-progress history.
 4. Use **Progress** in the top bar for goals, study streaks, and the Quick Focus timer.
 
@@ -90,7 +90,7 @@ An older browser-local demo administrator is **not** the same as a Supabase Clou
 
 ### The StudySpire home dashboard
 
-The refreshed StudySpire home is the first screen you see. It keeps the original sidebar and has a calm blue-and-lavender hero with the StudySpire spire-and-book icon and the original **Academic AI** subtext. Each of the seven study-tool cards opens a real existing feature; there are no paid upgrades. **Today's Plan** uses assignments and task status from your current profile, and the focus panel opens the existing working focus timer. Friends and Documents take you to your own account's content; the home page does not invent sample classmates, assignments, or files. Mini stays reachable through the small floating icon, and **? Help** opens the on-site guide pulled from this README. The regular Study Center and all earlier account, AI, messaging, and staff screens remain available.
+The refreshed StudySpire home is the first screen you see. It keeps the original sidebar and has a calm blue-and-lavender hero with the StudySpire spire-and-book icon and the original **Academic AI** subtext. The five distinct study-tool cards open AI Tutor, Flashcards, Assignments, Documents, and Friends; there are no paid upgrades. **Today's Plan** uses assignments and task status from your current profile, and the focus panel opens the existing working focus timer. Friends and Documents take you to your own account's content; the home page does not invent sample classmates, assignments, or files. Mini stays reachable through the small floating icon, and **? Help** opens the on-site guide pulled from this README. The redundant Study Center menu link is removed, but the original study tools, account, AI, messaging, and staff screens remain available. Study Planner is available in Assignments; Cloud Drive and Notes are combined under Documents.
 
 ## Cloud profile pictures and moderation
 
