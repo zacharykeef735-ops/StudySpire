@@ -9,6 +9,7 @@ StudySummit is a static web application: the main interface lives in `index.html
 ## Contents
 
 - [What StudySummit does](#what-studysummit-does)
+- [Progress, focus and quick actions](#progress-focus-and-quick-actions)
 - [How it works](#how-it-works)
 - [Accounts and cloud synchronization](#accounts-and-cloud-synchronization)
 - [Roles and dashboards](#roles-and-dashboards)
@@ -32,6 +33,20 @@ You can use browser-local study features without creating a cloud account. A Stu
 - **Older email accounts:** Existing Supabase email/password accounts remain available through the **Older email account** sign-in option.
   
 An older browser-local demo administrator is **not** the same as a Supabase Cloud Owner.
+
+## Progress, focus and quick actions
+
+StudySummit's compact Study Hub adds a dashboard built around the study content you already have:
+
+- **Progress & Focus:** flashcard counts, finished tasks, completed focus sessions, personal study streaks, daily goals and a seven-day activity chart.
+- **Upcoming assignments:** reads assignments from the existing Study Lab agenda.
+- **Quick focus timer:** 15-, 25-, or 45-minute sessions; a session counts only when it finishes. It pauses when you pause it and will correctly finish when you return to a backgrounded tab.
+- **Study suggestions:** a simple local recommendation based on upcoming assignments or cards to review — no extra AI download.
+- **Compact sidebar:** the existing collapse control still works and can also be toggled with **Ctrl/⌘ + B** on desktop.
+- **Quick actions:** press **Ctrl/⌘ + K** (or **/** when not typing) to search features such as the progress dashboard, AI settings, account menu, and saved work.
+- **Diagnostics:** open **Health** in the top bar to check WebGPU availability, shader support, approximate browser storage usage, cloud connection, and the current AI loading message. Use **Copy results** when reporting an issue.
+
+Daily activity is calculated from **new changes** to the Study Suite (flashcard reviews, completed tasks and completed focus sessions) plus the new Quick Focus timer. Older data still contributes to lifetime counts, but past daily totals are not invented. Progress is saved using account-scoped storage under `studydock-study-progress-v1` and included in the supported cloud study-data sync. Browser-only accounts remain local.
 
 ## How it works
 
@@ -70,7 +85,15 @@ No email or phone number is required for these username accounts. During beta, `
 
 ### Sign in, sign out, and use multiple accounts
 
-Use **Username + password → Sign in** to open an existing account. To create another username account in the same browser, first **Sign out**, then register the new account. The account menu provides **Create another account** after signing out. Sign out before switching between accounts; the app does **not** currently offer simultaneous signed-in cloud accounts or one-click multi-account switching.
+Use **Username + password → Sign in** to open an existing account. The account menu offers **⇄ Switch account** and **＋ Add account**; these explicitly sign out of the current account and return to the appropriate screen.
+
+StudySummit remembers up to eight **usernames only** on this browser. Choose a remembered username to fill the sign-in field, then enter its password. **Passwords and active sessions are not stored by this account switcher.** StudySummit does not support being signed into multiple cloud accounts simultaneously in one browser tab.
+
+### Change your own password
+
+While signed into a **username account**, open **Manage account → Change my password**. Enter the current password, a different new password (at least ten characters, 72 bytes maximum), and confirmation. The password change is checked securely on the server; incorrect attempts are rate-limited, and other devices must sign in again after a successful change.
+
+Older **email accounts** continue to use Supabase's normal email/password features. The username-password change panel is intended for username accounts only.
 
 Older email-based users can select **Older email account** and use their existing credentials. Creating a new username account does not automatically merge it with an older email account.
 
@@ -169,7 +192,7 @@ StudySummit includes an optional browser-based AI assistant using `@mlc-ai/web-l
 4. Watch the progress/status messages and wait for the model to initialize.
 5. Ask a question once the model is ready.
 
-The loader pins **WebLLM 0.2.85** and uses backup CDN sources. The supported built-in options include **SmolLM2 360M**, **Llama 3.2 1B** (default), **SmolLM2 1.7B**, and **Llama 3.2 3B**. Earlier Qwen 2.5 selections were removed because they are not present in this WebLLM version's built-in model list. The loader falls back to a compatible supported model if a saved choice is no longer available.
+The loader pins **WebLLM 0.2.85** and uses backup CDN sources. Before loading, it checks the model's WebGPU feature and buffer-size requirements, offers a compatible alternative if needed, and displays the model's **estimated GPU memory requirement** from WebLLM (which is *not* the download size). It also remembers the last model successfully initialized on this browser. The supported built-in options include **SmolLM2 360M**, **Llama 3.2 1B** (default), **SmolLM2 1.7B**, and **Llama 3.2 3B**. Earlier Qwen 2.5 selections were removed because they are not present in this WebLLM version's built-in model list. The loader falls back to a compatible supported model if a saved choice is no longer available.
 
 Temporary library/download errors may retry automatically; GPU device or memory failures are not retried in a loop. If the download stays at 0% for over four minutes, StudySummit stops waiting and asks you to **refresh the page before trying again**, to avoid overlapping GPU downloads. If it reports that WebGPU is unavailable, enabling browser graphics acceleration or using another supported browser/device may be necessary.
 
@@ -203,7 +226,7 @@ The site is largely static and does not require a Node.js build step for the roo
 4. Save, then check **Actions** for deployment results.
 5. Open the published HTTPS URL and hard-refresh if the previous version remains cached.
 
-Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository root.
+Keep `index.html`, `suite.js`, `enhancements.js`, `enhancements.css`, `cloud.js`, and `cloud-config.js` together in the repository root.
 
 ## Supabase setup and migrations
 
@@ -226,6 +249,7 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
    2. `username-login-migration.sql` — username credentials, anonymous-session mapping, username login.
    3. `role-permissions-recovery-migration.sql` — role-scoped dashboards and Owner-assisted password recovery.
    4. `six-digit-recovery-codes-migration.sql` — updates recovery functions to use 6-digit codes and invalidates any previously issued long codes.
+   5. `self-service-password-change-migration.sql` — allows signed-in username users to change their own password after providing the current password.
 6. Verify the SQL statements succeeded and that username registration/login work.
 7. Create an initial Owner through a **trusted project-administrator-only database operation** after verifying the intended account. Never let public signup or client-side JavaScript grant Owner privileges.
 8. Deploy the static website and test role permissions with separate accounts.
@@ -238,15 +262,20 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | Main StudySummit interface, browser study features, and browser AI. |
+| `index.html` | Main StudySummit interface, foundational study tools, and browser AI. |
+| `suite.js` | Extracted ~65 KB study suite logic, separately cached by the browser. |
+| `enhancements.js` | Study progress, focus timer, quick actions, AI settings cleanup, and health diagnostics. |
+| `enhancements.css` | Responsive Study Hub, command search and AI settings styles. |
 | `cloud.js` | Supabase client bridge, username sign-in, cloud sync, staff dashboards, and recovery UI. |
 | `cloud-config.js` | Public Supabase project URL and publishable key configuration. |
 | `supabase.sql` | Original/base Supabase schema, reports, profiles, policies, and moderation functions. |
 | `username-login-migration.sql` | Username credentials and custom login RPCs. |
 | `role-permissions-recovery-migration.sql` | Role restrictions and Owner-reviewed password recovery RPCs, now using 6-digit codes. |
 | `six-digit-recovery-codes-migration.sql` | Incremental update to shorter codes for existing installations. |
+| `self-service-password-change-migration.sql` | Server-verified password change for signed-in username accounts. |
 | `README.md` | Project overview, user instructions, setup, architecture, and troubleshooting. |
-| `tests/browser-ai-smoke.test.cjs` | Dependency-free smoke tests for startup crashes, model catalog and model-selection fallback. |
+| `tests/browser-ai-smoke.test.cjs` | Browser AI startup and model-selection regression checks. |
+| `tests/studysummit-upgrades.test.cjs` | Independent-script, password security, account isolation and progress/health regression checks. |
 | `.github/workflows/browser-ai-smoke.yml` | Runs these regression tests on pull requests and main. |
 
 ## Security and limitations
@@ -257,7 +286,7 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
 - **Custom authentication:** Username accounts use Supabase anonymous sessions and database RPCs, rather than Supabase's standard email/password identity model. Have this design independently reviewed before a large public launch.
 - **Role changes:** Only authenticated active Owners should be able to grant Owner privileges; an account named `admin` is not automatically an Admin.
 - **Recovery:** Owners verify requesters manually. Recovery codes are temporary and must be delivered privately.
-- **Data:** Browser storage may be cleared, and sync may fail. Export backups of important study data.
+- **Data:** Browser storage may be cleared, and sync may fail. Export backups of important study data. New focus sessions and daily study progress are tracked by account, not as a public leaderboard.
 - **Bans:** A ban restricts cloud account operations; it cannot prevent someone from downloading publicly hosted HTML/JavaScript.
 - **Privacy:** Do not store sensitive student records or regulated personal information without appropriate privacy and security review.
 
@@ -271,17 +300,19 @@ Keep `index.html`, `cloud.js`, and `cloud-config.js` together in the repository 
 | **Role change denied** | Only an active Owner can assign roles; the last Owner cannot be removed. |
 | **Recovery request not visible** | Confirm the request was made while signed out, an Owner is logged in, and the newest recovery migration is installed. |
 | **Recovery code rejected** | Check username and all six digits, expiry (15 minutes), five-attempt limit, and whether the code has already been used. |
-| **Cloud sync fails** | Check the Supabase URL/key, network connection, active session, SQL policies, and browser console. Export a backup before troubleshooting. |
+| **Cloud sync fails** | Open **Health** for last cloud sync status, check the Supabase URL/key and connection, and export a backup before troubleshooting. |
+| **Password change fails** | Use a signed-in username account, enter the correct current password, and check the new password constraints. Repeated wrong passwords can cause a temporary lockout. |
+| **Progress seems empty** | Daily activity begins tracking new reviews/tasks/focus work after upgrading. Older study data still counts toward lifetime metrics but cannot reconstruct historical daily activity. |
 | **AI stuck or download fails** | Use **SmolLM2 360M** as the smallest option; check WebGPU support, hardware acceleration, device memory, network access to Hugging Face, and browser console. For a 0% stall that times out, reload the page before retrying. The console retains the original error. |
 | **Website shows old version** | Check GitHub Pages deployment and perform a hard refresh to clear cached assets. |
 | **Database RPC/function missing** | Check the migration order and Supabase SQL Editor errors. Do not reapply older migrations over newer ones without reviewing them. |
 
 ## Developer regression checks
 
-The codebase includes dependency-free smoke tests for missing DOM elements, corrupted locally saved history, supported model IDs, and model fallback behavior. Run them with Node.js 22 or newer:
+The codebase includes dependency-free smoke tests for missing DOM elements, corrupted saved history, supported model IDs, account safety, and study progress calculations. Run them with Node.js 22 or newer:
 
 ```sh
-node --test tests/browser-ai-smoke.test.cjs
+node --test tests/*.test.cjs
 ```
 
 The GitHub workflow runs these tests on pull requests and updates to `main`. These tests do **not** replace an actual WebGPU download on a physical GPU.
