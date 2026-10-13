@@ -68,7 +68,7 @@ test('Mini, account roles, Help and study features remain wired',()=>{
   }
   assert.match(suite,/__KEEP_STUDYSYNCKSUITE__/);
   assert.match(messages,/StudySummitMessagingBridge/);
-  assert.match(html,/ssCloudOwner/);
+  assert.match(cloud,/ssCloudOwner/);
 });
 
 test('all inline website JavaScript remains syntactically valid',()=>{
