@@ -520,7 +520,7 @@ body{font-size:14px;line-height:1.55}
 @media(prefers-reduced-motion:reduce){.sd-suite-pane.active{animation:none!important}.btn,.quick,.sd-dashboard-actions button{transition:none!important;transform:none!important}}
 </style><style id="ss-admin-extra-css">.ss-admin-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin:14px 0}.ss-admin-metric{border:1px solid var(--line,rgba(140,160,190,.25));border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;background:rgba(130,150,180,.045)}.ss-admin-metric strong{font-size:24px}.ss-admin-metric small{opacity:.75}.ss-admin-history{padding:9px 0;border-bottom:1px solid rgba(150,160,180,.15);display:flex;flex-direction:column;gap:4px}.ss-admin-history small{opacity:.7}.ss-admin-row textarea{width:100%;min-height:56px;margin:8px 0;resize:vertical}</style><link rel="icon" type="image/svg+xml" href="studyspire-mark.svg"/>
 <link rel="stylesheet" href="studyspire-home.css?v=3.90"/>
-<link rel="stylesheet" href="studyspire-layout.css?v=3.91"/>
+<link rel="stylesheet" href="studyspire-layout.css?v=3.94"/>
 <link rel="stylesheet" href="avatars.css?v=3.92"/>
 <link rel="stylesheet" href="community-polish.css?v=4.01"/>
 <meta name="description" content="StudySpire Academic AI: a free study workspace with Mini, flashcards, notes, planning and friends."/>
@@ -538,7 +538,7 @@ body{font-size:14px;line-height:1.55}
 <button data-page="essay" title="Writing feedback"><span class="navicon">✎</span><span class="sd-navtext">Writing feedback</span></button>
 </nav></div>
 <div class="sd-nav-group"><div class="navlabel">Stay organized</div><nav class="nav">
-<button data-page="suite" data-suite-target="agenda" title="Agenda &amp; calendar"><span class="navicon">▦</span><span class="sd-navtext">Agenda &amp; calendar</span></button>
+<button data-page="suite" data-suite-target="agenda" title="Assignments"><span class="navicon">▦</span><span class="sd-navtext">Assignments</span></button>
 <button data-page="suite" data-suite-target="learning" title="Skills &amp; progress"><span class="navicon">◉</span><span class="sd-navtext">Skills &amp; progress</span></button>
 <button data-page="suite" data-suite-target="friends" title="Messages &amp; friends"><span class="navicon">💬</span><span class="sd-navtext">Messages &amp; friends</span></button>
 <button data-page="suite" data-suite-target="admin" hidden="" id="ssAdminSidebar" title="Admin moderation"><span class="navicon">⚑</span><span class="sd-navtext">Admin moderation <span id="ssAdminSideCount"></span></span></button>
@@ -589,12 +589,12 @@ body{font-size:14px;line-height:1.55}
 </div>
 </section>
 <section class="page" id="page-suite">
-<div class="hero"><div><div class="eyebrow">StudySpire • all-in-one</div><h1>Study Center</h1><p>Study with your own materials, save conversations, practice concepts, and keep your work organized. Tools share your selected AI and education level.</p></div></div>
-<div aria-label="Study Center tools" class="sd-suite-tabs" id="sdSuiteTabs">
+<div class="hero"><div><div class="eyebrow">StudySpire • all-in-one</div><h1>Study Tools</h1><p>Study with your own materials, save conversations, practice concepts, and keep your work organized. Tools share your selected AI and education level.</p></div></div>
+<div aria-label="Study tools" class="sd-suite-tabs" id="sdSuiteTabs">
 <button class="active" data-suite="welcome" type="button">⌂ Dashboard</button>
 <button data-suite="topic" type="button">✦ Topic lessons</button>
 <button data-suite="quiz" type="button">◈ Flashcards</button>
-<button data-suite="agenda" type="button">▦ Agenda</button>
+<button data-suite="agenda" type="button">▦ Assignments</button>
 <button data-suite="learning" type="button">◉ My skills</button>
 <button data-suite="friends" type="button">💬 Messages &amp; friends</button>
 <details class="sd-more-tools" id="sdMoreTools"><summary>More tools <span id="sdMoreToolsLabel">▾</span></summary><div class="sd-more-menu">
@@ -644,7 +644,7 @@ body{font-size:14px;line-height:1.55}
 </div>
 <section class="card ss-resource-panel"><div class="cardhead"><div><div class="cardtitle">Videos &amp; worksheet finder</div><div class="sub">Look for helpful videos or printable practice on trusted learning websites.</div></div></div><div class="cardbody"><label class="label" for="ssResourceTopic">Topic for resources</label><div class="row"><input class="field sd-flex" id="ssResourceTopic" placeholder="e.g. Photosynthesis" type="text"/><button class="btn primary small" id="ssFindVideos" type="button">Find videos ↗</button><button class="btn secondary small" id="ssFindWorksheets" type="button">Find worksheets ↗</button></div><div aria-live="polite" class="ss-resource-results" id="ssExternalResources"><p class="sub">Enter a topic or use the one from your lesson to find learning resources.</p></div><p class="hint">Opens searches on external sites. Links do not copy or download paid or copyrighted worksheets. Some sites require accounts or subscriptions.</p></div></section></div>
 <div class="sd-suite-pane" data-pane="agenda">
-<div class="sd-feature-head"><div><div class="eyebrow">Your workload at a glance</div><h2>Calendar &amp; agenda</h2><p>Track homework, exams, projects, and what you've already finished.</p></div><span class="sd-chip">Saved to your profile</span></div>
+<div class="sd-feature-head"><div><div class="eyebrow">Your workload at a glance</div><h2>Assignments &amp; calendar</h2><p>Track homework, exams, projects, and what you've already finished.</p></div><span class="sd-chip">Saved to your profile</span></div>
 <div class="sd-suite-grid sd-agenda-grid">
 <section class="card"><div class="cardhead"><div class="cardtitle">Monthly calendar</div></div><div class="cardbody"><div class="sd-calendar-toolbar"><button class="btn ghost small" id="sdCalendarPrev" title="Previous month">←</button><b id="sdCalendarTitle"></b><button class="btn secondary small" id="sdCalendarToday">Today</button><button class="btn ghost small" id="sdCalendarNext" title="Next month">→</button></div><div class="sd-calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="sd-calendar-grid" id="sdCalendarGrid"></div><p class="hint">Select a day to see or add its assignments.</p></div></section>
 <section class="card"><div class="cardhead"><div class="cardtitle">Add an assignment</div></div><div class="cardbody"><form id="sdAgendaForm"><label class="label" for="sdAssignmentName">Assignment / homework</label><input class="field" id="sdAssignmentName" maxlength="160" placeholder="Chapter 5 practice problems" required=""/><div class="formgrid"><div><label class="label" for="sdAssignmentCourse">Class</label><input class="field" id="sdAssignmentCourse" maxlength="70" placeholder="Math"/></div><div><label class="label" for="sdAssignmentDue">Due date</label><input class="field" id="sdAssignmentDue" required="" type="date"/></div></div><label class="label" for="sdAssignmentType">Type</label><select class="field" id="sdAssignmentType"><option>Homework</option><option>Quiz / test</option><option>Essay</option><option>Project</option><option>Reading</option><option>Other</option></select><label class="label" for="sdAssignmentNotes">Notes (optional)</label><textarea id="sdAssignmentNotes" placeholder="Pages, instructions, or reminders" style="min-height:70px"></textarea><button class="btn primary" type="submit">Add to agenda</button></form><div class="divider"></div><b class="label" id="sdAgendaDayHeading">Assignments</b><div class="sd-agenda-list" id="sdAgendaDayList"></div></div></section>
@@ -1736,7 +1736,7 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobile()});
 // Suite sidebar shortcuts have their own destinations. Preserve the core page switcher.
 function syncNavigation(name){document.querySelectorAll('.sidebar .nav button[data-suite-target]').forEach(b=>{
  const active=b.dataset.suiteTarget===name&&document.getElementById('page-suite')?.classList.contains('active');b.classList.toggle('active',active);
- });const crumb=$('crumbPage');if(document.getElementById('page-suite')?.classList.contains('active'))crumb.textContent=({welcome:'Dashboard',topic:'Topic lessons',agenda:'Agenda',quiz:'Flashcards',learning:'Skills & progress',friends:'Friends',chat:'Conversations',files:'Documents',writing:'Essay studio',math:'Math',focus:'Focus',voice:'Voice',models:'AI advisor',library:'Library'})[name]||'Study Center'}
+ });const crumb=$('crumbPage');if(document.getElementById('page-suite')?.classList.contains('active'))crumb.textContent=({welcome:'Overview',topic:'Topic lessons',agenda:'Assignments',quiz:'Flashcards',learning:'Skills & progress',friends:'Friends',chat:'Conversations',files:'Documents',writing:'Essay studio',math:'Math',focus:'Focus',voice:'Voice',models:'AI advisor',library:'Library'})[name]||'Study Tools'}
 const suite=window.__KEEP_STUDYSYNCKSUITE__;
 if(suite){const original=suite.showPane;suite.showPane=function(name){original(name);syncNavigation(name)};
  document.querySelectorAll('.sidebar .nav [data-suite-target]').forEach(btn=>btn.addEventListener('click',e=>{
@@ -2121,8 +2121,8 @@ renderEverything();
 <script src="enhancements.js?v=3.80"></script>
 <script src="messaging.js?v=3.92"></script>
 <script src="help-guide.js?v=3.93"></script>
-<script src="studyspire-home.js?v=3.90"></script>
-<script src="studyspire-layout.js?v=3.92"></script>
+<script src="studyspire-home.js?v=3.94"></script>
+<script src="studyspire-layout.js?v=3.94"></script>
 <script src="avatars.js?v=3.92"></script>
 <script src="verified-roles.js?v=4.01"></script>
 </body>
