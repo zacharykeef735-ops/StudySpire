@@ -1103,10 +1103,16 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         if(!known.length)throw new Error("The WebLLM model catalog is unavailable. Refresh StudySummit and retry.");
         const supported=(id)=>{
           const candidate=known.find(m=>m?.model_id===id);
-          return !!candidate && (!Array.isArray(candidate.required_features)||candidate.required_features.every(feature=>adapter.features?.has(feature)));
+          if(!candidate)return false;
+          if(Array.isArray(candidate.required_features)&&!candidate.required_features.every(feature=>adapter.features?.has(feature)))return false;
+          // A browser may expose WebGPU yet have insufficient max binding size.
+          const needs=Number(candidate.buffer_size_required_bytes)||0;
+          if(needs&&adapter.limits?.maxStorageBufferBindingSize&&needs>adapter.limits.maxStorageBufferBindingSize)return false;
+          return true;
         };
         if(!supported(chosenModelId)){
-          const fallback=[DEFAULT_MODEL_ID,"SmolLM2-360M-Instruct-q4f32_1-MLC","Llama-3.2-1B-Instruct-q4f32_1-MLC",...Object.keys(MODEL_CATALOG)].find(supported);
+          let lastGood='';try{lastGood=localStorage.getItem(sdAccountKey("studydockLastReadyModel"))||''}catch(_){}
+          const fallback=[lastGood,DEFAULT_MODEL_ID,"SmolLM2-360M-Instruct-q4f32_1-MLC","Llama-3.2-1B-Instruct-q4f32_1-MLC",...Object.keys(MODEL_CATALOG)].find(id=>MODEL_CATALOG[id]&&supported(id));
           if(!fallback)throw new Error("This WebGPU adapter does not support any of the installed model options. Check graphics acceleration and browser compatibility.");
           chosenModelId=fallback;
           chosenModel=MODEL_CATALOG[fallback];
@@ -1114,7 +1120,14 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
           try{localStorage.setItem(sdAccountKey("studydockLocalModel"),fallback)}catch(_){}
           setStatus("The selected model is unavailable or needs unsupported GPU features. Switching to "+chosenModel.label+"…","warn");
         }
-        setStatus("Step 3/3 · Preparing "+chosenModel.label+". First use downloads model files; this may take several minutes.","info");
+        const activeModel=known.find(m=>m?.model_id===chosenModelId);
+        const estimatedVRAM=Number(activeModel?.vram_required_MB);
+        const modelRequirements=Number.isFinite(estimatedVRAM)&&estimatedVRAM>0
+          ? " WebLLM estimates approximately "+Math.ceil(estimatedVRAM)+" MB of GPU memory is required (not download size)."
+          : "";
+        const modelHint=el("modelDetailHint");
+        if(modelHint)modelHint.textContent=chosenModel.tier+" · "+chosenModel.detail+"."+modelRequirements+" First-time downloads can be large; cached models may start faster.";
+        setStatus("Step 3/3 · Preparing "+chosenModel.label+"."+modelRequirements+" First use downloads model files; this may take several minutes.","info");
         let progress=0,progressAt=Date.now(),lastReport="Preparing model download";
         monitor=setInterval(()=>{
           if(!loading||generation!==loadGeneration)return;
@@ -1157,6 +1170,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
           return;
         }
         localEngine=engine;loadedModelId=chosenModelId;
+        try{localStorage.setItem(sdAccountKey("studydockLastReadyModel"),chosenModelId)}catch(_){}
         setConnected(true);
         setStatus(chosenModel.label+" is ready for tutoring and Mini.","good");
         if(typeof toast==="function")toast("Browser AI loaded.");
@@ -1196,7 +1210,10 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         const chosen = MODEL_CATALOG[modelSelect.value];
         try { localStorage.setItem(sdAccountKey("studydockLocalModel"), modelSelect.value); } catch (_) {}
         const hint = el("modelDetailHint");
-        if (hint && chosen) hint.textContent = chosen.tier + " · " + chosen.detail + ". First-time loading may take longer; previously cached models may start faster.";
+        if(hint&&chosen){
+          let lastGood='';try{lastGood=localStorage.getItem(sdAccountKey("studydockLastReadyModel"))||''}catch(_){}
+          hint.textContent=chosen.tier+" · "+chosen.detail+". Models downloaded earlier may load faster."+(modelSelect.value===lastGood?" ✓ Successfully used on this browser.":"");
+        }
         if (localEngine && loadedModelId !== modelSelect.value) {
           setStatus("Model selection changed. Press “Load browser AI” to switch models.", "warn");
         }
