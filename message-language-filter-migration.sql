@@ -17,7 +17,7 @@ returns text language plpgsql immutable security invoker set search_path = '' as
 declare normalized text;
 begin
   -- Normalize common numeric substitutions and punctuation between letters.
-  normalized:=pg_catalog.translate(pg_catalog.lower(pg_catalog.coalesce(input_text,'')),
+  normalized:=pg_catalog.translate(pg_catalog.lower(coalesce(input_text,'')),
     '01345789','oieastbg');
   normalized:=pg_catalog.regexp_replace(normalized,'[._-]','','g');
   -- Do not match ordinary substrings: 'hello' or 'class' are not blocked.
@@ -38,7 +38,7 @@ $$;
 revoke all on function ss_private.ss_chat_language_violation(text) from public,anon,authenticated;
 
 create or replace function public.ss_chat_language_check(message text)
-returns text language plpgsql immutable security invoker set search_path = '' as $$
+returns text language plpgsql immutable security definer set search_path = '' as $
 begin
   return ss_private.ss_chat_language_violation(message);
 end;
@@ -51,7 +51,7 @@ returns uuid language plpgsql security definer set search_path='' as $$
 declare me uuid; new_id uuid; clean text; violation text;
 begin
  me:=ss_private.ss_social_actor();
- clean:=pg_catalog.btrim(pg_catalog.coalesce(message,''));
+ clean:=pg_catalog.btrim(coalesce(message,''));
  if char_length(clean)<1 or char_length(clean)>2000 then
    raise exception 'Write a message between 1 and 2000 characters';
  end if;
