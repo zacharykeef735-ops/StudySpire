@@ -147,14 +147,44 @@ function showGate(kind='login'){
  };
  $('ssc-pass').onkeydown=e=>{if(e.key==='Enter')$('ssc-login').click()};
  $('ssc-logout').onclick=signOutCloud;
- $('ssc-new-account').onclick=async()=>{if(!confirm('Sign out of @'+(profile?.username||'your account')+' to create a separate account? Your current password and study data will stay unchanged.'))return;sessionStorage.setItem('ss-cloud-next-action','register');await signOutCloud()};
+ async function switchCloudAccount(next){
+   if(!person||signingOut)return;
+   if(!confirm('Sign out of @'+(profile?.username||'your account')+' and '+(next==='register'?'add an account':'switch accounts')+'? Your study data remains saved.'))return;
+   sessionStorage.setItem('ss-cloud-next-action',next);await signOutCloud();
+ }
+ $('ssc-new-account').onclick=()=>switchCloudAccount('register');
+ $('ssc-switch-account').onclick=()=>switchCloudAccount('switch');
+ $('ssc-changePassword').onclick=async()=>{
+   if(!person||sessionMethod!=='username'||!live)return cloudNotice('Sign in with your username to change its password.');
+   const old=$('ssc-oldPass').value,next=$('ssc-nextPass').value,again=$('ssc-nextPassAgain').value;
+   if(!old)return cloudNotice('Enter your current password.');
+   if(next!==again)return cloudNotice('New passwords do not match.');
+   if(next===old)return cloudNotice('Use a different password.');
+   if(next.length<10||new TextEncoder().encode(next).length>72)return cloudNotice('New passwords must have at least 10 characters and at most 72 bytes.');
+   const button=$('ssc-changePassword');button.disabled=true;
+   try{
+    const {data,error}=await client.rpc('ss_username_change_password',{current_password:old,new_password:next});
+    if(error)throw error;
+    if(data!==true)return cloudNotice('Incorrect current password or account temporarily locked.');
+    $('ssc-oldPass').value='';$('ssc-nextPass').value='';$('ssc-nextPassAgain').value='';
+    cloudNotice('Password changed successfully. Other devices must sign in again.');
+   }catch(e){cloudNotice('Could not change password: '+(e?.message||e))}
+   finally{button.disabled=false}
+ };
  $('ssc-check').onclick=async()=>{const ok=await refreshProfile();if(ok&&!banned(profile))location.reload();else cloudNotice('This ban is still active. Your data export options are available below.')};
  $('ssc-flash').onclick=()=>exportMine('flash');$('ssc-chats').onclick=()=>exportMine('chats');$('ssc-all').onclick=()=>exportMine('all');
  setMethod(authMethod);
  $('ssc-current-actions').hidden=!(person&&kind==='account'&&!banned(profile));
  $('ssc-logout').parentElement.hidden=!(person&&kind!=='loading');
  if(kind==='loading'){$('ssc-loginArea').hidden=true;cloudNotice('Checking your account and syncing study data…')}
- if(kind==='login'&&!person&&sessionStorage.getItem('ss-cloud-next-action')==='register'){sessionStorage.removeItem('ss-cloud-next-action');cloudNotice('Ready to create an account. Choose a new username and password, then press Create account.');$('ssc-user')?.focus()}
+ if(kind==='login'&&!person){
+  const next=sessionStorage.getItem('ss-cloud-next-action');
+  if(next==='register'||next==='switch'){
+    sessionStorage.removeItem('ss-cloud-next-action');
+    cloudNotice(next==='register'?'Add an account: choose a fresh username and password.':'Select a previously used account or type another username, then enter its password.');
+    if(next==='register')$('ssc-user')?.focus();
+  }
+ }
  $('ssc-close').hidden=!(person&&kind==='account'&&!banned(profile));
  if(kind==='banned')showBanned();
  return gate;
@@ -221,7 +251,7 @@ function exportMine(kind){const items=remote?.data||studyItems();const result={k
  download('study-summit-'+kind+'-'+Date.now()+'.json',result)}
 async function refreshProfile(){if(!person)return false;const {data,error}=await client.from('ss_profiles').select('id,username,role,banned,banned_until,ban_reason').eq('id',person.id).single();
  if(error){cloudNotice('Account status unavailable: '+error.message);return false}profile=data;role=profile.role||'student';
- try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
+ try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}rememberUsername(profile.username);if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
 function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log){log.textContent='Sign out';log.style.display='inline-flex';log.hidden=false;}
  const names={owner:'👑 Owner Dashboard',admin:'🛡 Admin Dashboard',moderator:'⚑ Moderator Dashboard'};
@@ -252,10 +282,10 @@ function installOwnerNavigation(){
 }
 function installButtons(){document.documentElement.classList.add('ss-cloud-active');
  const localShade=$('sdAuthShade');if(localShade)localShade.style.display='none';
- const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate('account');cloudNotice(`Signed in as @${profile?.username||'…'}. Sign out below to switch accounts.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
+ const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate('account');cloudNotice(`Signed in as @${profile?.username||'…'}. Switch accounts or update your password below.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
  const logout=$('sdAccountLogout');if(logout){logout.style.display='inline-flex';logout.hidden=false;logout.onclick=signOutCloud;}
  const actions=document.querySelector('.sd-profile-actions')||document.querySelector('.sd-profile-side')||document.body;
- if(!$('ssCloudAccountBtn')){const button=document.createElement('button');button.id='ssCloudAccountBtn';button.type='button';button.className='btn secondary small';button.textContent='☁ Cloud account';button.onclick=()=>open?.click();actions.append(button)}
+ if(!$('ssCloudAccountBtn')){const button=document.createElement('button');button.id='ssCloudAccountBtn';button.type='button';button.className='btn secondary small';button.textContent='☁ Manage account';button.onclick=()=>open?.click();actions.append(button)}
  if(!$('ssCloudImportBtn')){const button=document.createElement('button');button.id='ssCloudImportBtn';button.type='button';button.className='btn secondary small';button.textContent='Import old backup';button.onclick=importLegacy;actions.append(button)}
  if(!$('ssCloudStaffBtn')){const button=document.createElement('button');button.id='ssCloudStaffBtn';button.type='button';button.className='btn secondary small';button.textContent='⚑ Cloud staff';button.onclick=()=>openStaff();actions.append(button)}
  if(!$('ssCloudReportBtn')){const button=document.createElement('button');button.id='ssCloudReportBtn';button.type='button';button.className='btn secondary small';button.textContent='Report an issue';button.onclick=sendReport;actions.append(button)}
@@ -270,10 +300,19 @@ function installButtons(){document.documentElement.classList.add('ss-cloud-activ
 }
 let lastUpload=Promise.resolve();
 function scheduleSync(){if(!live||syncing||banned(profile)||!person)return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>{uploadSnapshot().catch(e=>cloudNotice('Sync issue: '+e.message))},1800)}
-async function uploadSnapshot(){if(!live||syncing||banned(profile))return;const contents=studyItems(),snapshot=JSON.stringify(contents);if(snapshot===lastSnapshot)return;
+async function uploadSnapshot(){if(!live||syncing||banned(profile)||!person)return;const uploadFor=person.id,contents=studyItems(),snapshot=JSON.stringify(contents);if(snapshot===lastSnapshot)return;
  if(snapshot.length>1400000){cloudNotice('Cloud storage limit reached. Export a backup and remove some large study documents.');return}
- lastUpload=lastUpload.then(async()=>{const {data,error}=await client.from('ss_study_data').upsert({user_id:person.id,data:contents,updated_at:new Date().toISOString()},{onConflict:'user_id'}).select('updated_at').single();
-   if(error)throw Error(error.message);remote={data:contents,updated_at:data.updated_at};lastSnapshot=snapshot}).catch(err=>{cloudNotice('Cloud sync failed: '+err.message)});
+ lastUpload=lastUpload.then(async()=>{
+    if(!live||person?.id!==uploadFor)return;
+    const {data,error}=await client.from('ss_study_data').upsert({user_id:uploadFor,data:contents,updated_at:new Date().toISOString()},{onConflict:'user_id'}).select('updated_at').single();
+    if(error)throw Error(error.message);
+    if(person?.id===uploadFor){
+      remote={data:contents,updated_at:data.updated_at};lastSnapshot=snapshot;lastSyncAt=Date.now();lastSyncError='';
+      window.dispatchEvent(new Event('ss-cloud-sync'));
+    }
+  }).catch(error=>{
+    if(person?.id===uploadFor){lastSyncError=String(error?.message||error);cloudNotice('Cloud sync failed: '+lastSyncError);window.dispatchEvent(new Event('ss-cloud-sync'))}
+  });
  await lastUpload;
 }
 const nativeSet=Storage.prototype.setItem;
@@ -425,6 +464,14 @@ function addStyling(){const style=document.createElement('style');style.textCont
 .ssc-row{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}.ssc-row>button{flex:1}.ssc-shell button,.ssc-staffbox button{cursor:pointer;border:1px solid #8a89d8;background:#7978d6;color:#fff;border-radius:9px;padding:9px 13px;font-weight:720;font:inherit}
 .ssc-methods{display:flex;gap:8px;margin:16px 0}.ssc-methods button{flex:1;font-size:12px;padding:9px 6px}.ssc-methods .ssc-selected{background:#7978d6!important;border-color:#9c9bfd!important;color:#fff!important}.ssc-shell button.ssc-light,.ssc-staffbox button.ssc-light{background:#25324c;border-color:#49607d}.ssc-shell button:hover,.ssc-staffbox button:hover{filter:brightness(1.2)}
 .ssc-shell .ssc-forgot{display:block;margin:12px 0;width:100%;font-size:12px}
+.ssc-recentList{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.ssc-recent-label{font-size:12px}
+.ssc-recentItem{display:inline-flex;gap:3px}
+.ssc-recentItem button{padding:6px 10px!important;font-size:12px!important}
+.ssc-change-pass{margin:14px 0;border:1px solid #40526e;padding:12px;border-radius:10px}
+.ssc-change-pass summary{cursor:pointer;font-weight:700}
+.ssc-change-pass[hidden]{display:none!important}
+.ssc-change-pass button{margin-top:12px}
 .ssc-shell #ssc-recovery[hidden]{display:none!important}
 #ssCloudRecoveryRequests{display:grid;gap:10px;margin-top:12px}
 .ssc-recovery-row{border:1px solid #34435c;border-radius:12px;padding:12px;overflow-wrap:anywhere}
