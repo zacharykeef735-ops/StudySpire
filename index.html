@@ -522,6 +522,7 @@ body{font-size:14px;line-height:1.55}
 <link rel="stylesheet" href="studyspire-home.css?v=3.90"/>
 <link rel="stylesheet" href="studyspire-layout.css?v=3.91"/>
 <link rel="stylesheet" href="avatars.css?v=3.92"/>
+<link rel="stylesheet" href="community-polish.css?v=4.00"/>
 <meta name="description" content="StudySpire Academic AI: a free study workspace with Mini, flashcards, notes, planning and friends."/>
 </head>
 <body>
@@ -680,12 +681,12 @@ body{font-size:14px;line-height:1.55}
 </div>
 <section aria-label="Quick notes" class="sd-mini-notes" id="sdMiniNotes">
 <div class="sd-notes-heading"><b>Quick notes</b><span aria-live="polite" id="sdNotesIndicator">Saved locally</span></div>
+<div class="sd-notes-name-field"><label for="sdNotesTitle">Note name — type to rename</label><input aria-label="Note title" autocomplete="off" id="sdNotesTitle" maxlength="120" placeholder="Note title (e.g. Biology — cells)" type="text"/></div>
 <div class="sd-notes-choose">
-<select aria-label="Choose note" id="sdNotesList"><option value="">New note</option></select>
+<select aria-label="Switch saved note" id="sdNotesList"><option value="">New note</option></select>
 <button aria-label="Create a note" id="sdNotesNew" title="New note" type="button">＋</button>
 <button aria-label="Delete selected note" id="sdNotesDelete" title="Delete note" type="button">🗑</button>
 </div>
-<input aria-label="Note title" autocomplete="off" id="sdNotesTitle" maxlength="120" placeholder="Note title (e.g. Biology — cells)" type="text"/>
 <div class="sd-notes-subject-row">
 <label for="sdNotesSubject">Subject</label>
 <select aria-label="Note subject" id="sdNotesSubject">
@@ -2116,12 +2117,13 @@ renderEverything();
 </script>
 <!-- StudySpire v3.77: username/password accounts; older email Owners retained -->
 <script src="cloud-config.js"></script>
-<script src="cloud.js?v=3.92"></script>
+<script src="cloud.js?v=4.00"></script>
 <script src="enhancements.js?v=3.80"></script>
 <script src="messaging.js?v=3.92"></script>
 <script src="help-guide.js?v=3.93"></script>
 <script src="studyspire-home.js?v=3.90"></script>
 <script src="studyspire-layout.js?v=3.92"></script>
 <script src="avatars.js?v=3.92"></script>
+<script src="verified-roles.js?v=4.00"></script>
 </body>
 </html>
