@@ -14,6 +14,12 @@ const specs=[
 ];
 function navigate(target){
   if(target==='answer'){document.querySelector('.sidebar .nav button[data-page="answer"]')?.click();return}
+  // Prefer the visible Documents tab when Home cards open the merged workspace,
+  // so the active sidebar highlight agrees with the opened page.
+  if(target==='files'){
+    const docsButton=document.querySelector('.ss-primary-nav [data-ss-nav-route="files"]');
+    if(docsButton){docsButton.click();return}
+  }
   const btn=document.querySelector('.sidebar .nav button[data-suite-target="'+target+'"]');
   if(btn){btn.click();return}
   // Documents is a Study Suite pane, but has no legacy sidebar button of its own.
