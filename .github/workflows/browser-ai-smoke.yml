@@ -1,4 +1,4 @@
-name: Browser AI regression checks
+name: StudySummit regression checks
 
 on:
   push:
@@ -17,5 +17,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check browser AI and page startup safety
-        run: node --test tests/browser-ai-smoke.test.cjs
+      - name: Check AI, account security and study dashboard startup
+        run: node --test tests/*.test.cjs

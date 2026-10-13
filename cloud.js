@@ -6,6 +6,24 @@ const ready=/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(cfg.url||'').
 const $=id=>document.getElementById(id);
 const STORE=['studydock-suite-v1','ss-study-lab-v374','studydock-simple-v1','studydock-mini-notes-v1','studysync-mini-notes-v1','study-summit-personalization-v1','sd-mini-notes-v1','studydock-mini-v1','studydock-ai-v1'];
 let client=null,person=null,profile=null,remote=null,cloudId='',syncTimer=0,syncing=false,live=false,lastSnapshot='',role='student';
+let lastSyncAt=0,lastSyncError='';
+const RECENT_USERNAMES='ss-cloud-account-chooser-v1';
+function savedUsernames(){
+ try{
+  const names=JSON.parse(localStorage.getItem(RECENT_USERNAMES)||'[]');
+  return Array.isArray(names)?[...new Set(names.filter(v=>typeof v==='string'&&/^[a-z0-9_-]{3,32}$/.test(v)))].slice(0,8):[];
+ }catch(_){return []}
+}
+function rememberUsername(username){
+ const name=String(username||'').toLowerCase();
+ if(!/^[a-z0-9_-]{3,32}$/.test(name))return;
+ try{localStorage.setItem(RECENT_USERNAMES,JSON.stringify([name,...savedUsernames().filter(v=>v!==name)].slice(0,8)))}catch(_){}
+}
+function forgetUsername(username){
+ try{localStorage.setItem(RECENT_USERNAMES,JSON.stringify(savedUsernames().filter(v=>v!==username)))}catch(_){}
+}
+window.StudySummitCloudHealth=()=>({configured:ready,signedIn:!!person,username:profile?.username||'',role,active:!!live,syncing:!!syncing,lastSyncAt,syncError:lastSyncError});
+
 const escapeHTML=str=>String(str??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const prefix=()=>`sd-account-${cloudId}::`;
 const localKey=k=>prefix()+k;
@@ -33,28 +51,49 @@ function showGate(kind='login'){
  <p id="ssCloudNotice" class="ssc-muted" role="status" aria-live="polite">Your study space, on any device.</p>
  <div id="ssc-loginArea">
   <div class="ssc-methods" role="group" aria-label="Sign-in method"><button type="button" id="ssc-usernameMethod" class="ssc-method">Username + password</button><button type="button" id="ssc-emailMethod" class="ssc-method ssc-light">Older email account</button></div>
-  <div id="ssc-userRow"><label for="ssc-user">Username</label><input id="ssc-user" autocomplete="username" placeholder="Your username" maxlength="32" spellcheck="false" autocapitalize="none"/></div>
+  <div id="ssc-recent" hidden><b class="ssc-recent-label">Accounts used on this browser</b><div id="ssc-recentList" class="ssc-recentList"></div><p class="ssc-caption">Only usernames are remembered here; sign-in always requires a password.</p></div><div id="ssc-userRow"><label for="ssc-user">Username</label><input id="ssc-user" autocomplete="username" placeholder="Your username" maxlength="32" spellcheck="false" autocapitalize="none"/></div>
   <div id="ssc-emailRow" hidden><label for="ssc-email">Email address</label><input type="email" id="ssc-email" autocomplete="email" placeholder="you@example.com" maxlength="150"/></div>
   <label for="ssc-pass">Password</label><input id="ssc-pass" type="password" autocomplete="current-password" placeholder="At least 10 characters for new accounts" minlength="8"/><button id="ssc-showpass" type="button" class="ssc-light ssc-password-toggle" aria-pressed="false" aria-controls="ssc-pass">Show password</button>
   <div id="ssc-nameRow" hidden><label for="ssc-name">Username for older email account</label><input id="ssc-name" placeholder="Choose a username" maxlength="32" autocomplete="username"/></div>
   <div class="ssc-row"><button id="ssc-login" type="button">Sign in</button><button id="ssc-register" type="button" class="ssc-light">Create account</button></div><button id="ssc-forgot" class="ssc-light ssc-forgot" type="button">Forgot password? Owner-assisted reset</button><div id="ssc-recovery" hidden><p class="ssc-caption">A verified account holder can request a one-time code from an Owner. Your replacement password is only entered here.</p><label for="ssc-resetUser">Username</label><input id="ssc-resetUser" autocomplete="username" maxlength="32" placeholder="Username"/><button id="ssc-requestReset" class="ssc-light" type="button">Request reset</button><label for="ssc-resetCode">Recovery code</label><input id="ssc-resetCode" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code"/><label for="ssc-newPassword">New password</label><input id="ssc-newPassword" autocomplete="new-password" type="password" placeholder="At least 10 characters"/><div class="ssc-row"><button id="ssc-completeReset" type="button">Set new password</button><button id="ssc-cancelReset" class="ssc-light" type="button">Back to sign in</button></div></div>
-  <p id="ssc-recoveryInfo" class="ssc-caption">No email needed for new username accounts. Save your password: self-service password recovery isn't available yet. Owner-assisted recovery is not implemented.</p>
+  <p id="ssc-recoveryInfo" class="ssc-caption">No email needed. If you forget your password, request an Owner-approved six-digit recovery code.</p>
   <p class="ssc-caption">Older Supabase email/Owner accounts remain available via “Older email account.” Browser-only accounts are separate.</p>
  </div>
  <div id="ssc-bannedArea" hidden><h1 class="ssc-banned">YOU ARE BANNED</h1><p id="ssc-banReason" class="ssc-muted"></p>
  <div class="ssc-row"><button id="ssc-flash" type="button">Export flashcards</button><button id="ssc-chats" type="button" class="ssc-light">Export saved chats</button></div>
  <div class="ssc-row"><button id="ssc-all" type="button" class="ssc-light">Export all study data</button><button id="ssc-check" type="button" class="ssc-light">Check ban status</button></div>
  <p class="ssc-caption">Downloads are available for the account owner. A ban doesn't delete your notes.</p></div>
- <div id="ssc-current-actions" hidden><p class="ssc-caption">Your existing account, password and study data will be kept. Creating another account requires signing out first.</p><button id="ssc-new-account" class="ssc-light" type="button">＋ Create another account</button></div><div class="ssc-row"><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
+ <div id="ssc-current-actions" hidden>
+  <p class="ssc-caption">Signed in as @${escapeHTML(profile?.username||'account')}. Switching accounts signs out first; existing study data stays separate.</p>
+  <div class="ssc-row"><button id="ssc-switch-account" class="ssc-light" type="button">⇄ Switch account</button><button id="ssc-new-account" class="ssc-light" type="button">＋ Add account</button></div>
+  <details id="ssc-passwordSettings" class="ssc-change-pass" ${sessionMethod==='username'?'':'hidden'}><summary>🔒 Change my password</summary>
+   <label for="ssc-oldPass">Current password</label><input id="ssc-oldPass" type="password" autocomplete="current-password" placeholder="Current password"/>
+   <label for="ssc-nextPass">New password</label><input id="ssc-nextPass" type="password" autocomplete="new-password" placeholder="At least 10 characters"/>
+   <label for="ssc-nextPassAgain">Confirm new password</label><input id="ssc-nextPassAgain" type="password" autocomplete="new-password" placeholder="Repeat password"/>
+   <button id="ssc-changePassword" type="button" class="ssc-light">Save new password</button><p class="ssc-caption">Other devices must sign in again after changing this password.</p>
+  </details></div><div class="ssc-row"><button id="ssc-logout" class="ssc-light" type="button">Sign out</button></div></div>`;
  const setMethod=(method)=>{
    authMethod=method;const email=method==='email';
    $('ssc-userRow').hidden=email;$('ssc-emailRow').hidden=!email;
    $('ssc-nameRow').hidden=true;$('ssc-register').textContent='Create account';
    $('ssc-usernameMethod').classList.toggle('ssc-selected',!email);
    $('ssc-emailMethod').classList.toggle('ssc-selected',email);
-   $('ssc-recoveryInfo').textContent=email?'Older email accounts use Supabase email/password. New registrations may require confirmation depending on your Supabase settings.':'No email needed. Use a strong password and keep it safe; password recovery is not available yet.';
-   $('ssc-pass').value='';$('ssc-pass').type='password';$('ssc-showpass').textContent='Show password';$('ssc-showpass').setAttribute('aria-pressed','false');
+   $('ssc-recoveryInfo').textContent=email?'Older email accounts use Supabase email/password. New registrations may require confirmation depending on your Supabase settings.':'No email needed. Ask an Owner for a six-digit password recovery code if you forget your password.';
+   $('ssc-pass').value='';$('ssc-pass').type='password';$('ssc-showpass').textContent='Show password';$('ssc-showpass').setAttribute('aria-pressed','false');renderRecentAccounts();
  };
+ function renderRecentAccounts(){
+   const host=$('ssc-recent'),list=$('ssc-recentList');if(!host||!list)return;
+   list.replaceChildren();const names=savedUsernames();host.hidden=authMethod!=='username'||!names.length;
+   for(const name of names){
+    const wrap=document.createElement('span');wrap.className='ssc-recentItem';
+    const choose=document.createElement('button');choose.type='button';choose.className='ssc-light';
+    choose.textContent='@'+name;choose.onclick=()=>{$('ssc-user').value=name;$('ssc-pass').focus();cloudNotice('Enter the password for @'+name+'.')};
+    const remove=document.createElement('button');remove.type='button';remove.className='ssc-light';remove.textContent='×';
+    remove.title='Forget @'+name+' from this device';remove.setAttribute('aria-label',remove.title);
+    remove.onclick=()=>{forgetUsername(name);renderRecentAccounts()};
+    wrap.append(choose,remove);list.append(wrap)
+   }
+ }
  $('ssc-usernameMethod').onclick=()=>setMethod('username');
  $('ssc-emailMethod').onclick=()=>setMethod('email');
  $('ssc-showpass').onclick=()=>{const password=$('ssc-pass');const reveal=password.type==='password';password.type=reveal?'text':'password';$('ssc-showpass').textContent=reveal?'Hide password':'Show password';$('ssc-showpass').setAttribute('aria-pressed',String(reveal));};
@@ -108,14 +147,44 @@ function showGate(kind='login'){
  };
  $('ssc-pass').onkeydown=e=>{if(e.key==='Enter')$('ssc-login').click()};
  $('ssc-logout').onclick=signOutCloud;
- $('ssc-new-account').onclick=async()=>{if(!confirm('Sign out of @'+(profile?.username||'your account')+' to create a separate account? Your current password and study data will stay unchanged.'))return;sessionStorage.setItem('ss-cloud-next-action','register');await signOutCloud()};
+ async function switchCloudAccount(next){
+   if(!person||signingOut)return;
+   if(!confirm('Sign out of @'+(profile?.username||'your account')+' and '+(next==='register'?'add an account':'switch accounts')+'? Your study data remains saved.'))return;
+   sessionStorage.setItem('ss-cloud-next-action',next);await signOutCloud();
+ }
+ $('ssc-new-account').onclick=()=>switchCloudAccount('register');
+ $('ssc-switch-account').onclick=()=>switchCloudAccount('switch');
+ $('ssc-changePassword').onclick=async()=>{
+   if(!person||sessionMethod!=='username'||!live)return cloudNotice('Sign in with your username to change its password.');
+   const old=$('ssc-oldPass').value,next=$('ssc-nextPass').value,again=$('ssc-nextPassAgain').value;
+   if(!old)return cloudNotice('Enter your current password.');
+   if(next!==again)return cloudNotice('New passwords do not match.');
+   if(next===old)return cloudNotice('Use a different password.');
+   if(next.length<10||new TextEncoder().encode(next).length>72)return cloudNotice('New passwords must have at least 10 characters and at most 72 bytes.');
+   const button=$('ssc-changePassword');button.disabled=true;
+   try{
+    const {data,error}=await client.rpc('ss_username_change_password',{current_password:old,new_password:next});
+    if(error)throw error;
+    if(data!==true)return cloudNotice('Incorrect current password or account temporarily locked.');
+    $('ssc-oldPass').value='';$('ssc-nextPass').value='';$('ssc-nextPassAgain').value='';
+    cloudNotice('Password changed successfully. Other devices must sign in again.');
+   }catch(e){cloudNotice('Could not change password: '+(e?.message||e))}
+   finally{button.disabled=false}
+ };
  $('ssc-check').onclick=async()=>{const ok=await refreshProfile();if(ok&&!banned(profile))location.reload();else cloudNotice('This ban is still active. Your data export options are available below.')};
  $('ssc-flash').onclick=()=>exportMine('flash');$('ssc-chats').onclick=()=>exportMine('chats');$('ssc-all').onclick=()=>exportMine('all');
  setMethod(authMethod);
  $('ssc-current-actions').hidden=!(person&&kind==='account'&&!banned(profile));
  $('ssc-logout').parentElement.hidden=!(person&&kind!=='loading');
  if(kind==='loading'){$('ssc-loginArea').hidden=true;cloudNotice('Checking your account and syncing study data…')}
- if(kind==='login'&&!person&&sessionStorage.getItem('ss-cloud-next-action')==='register'){sessionStorage.removeItem('ss-cloud-next-action');cloudNotice('Ready to create an account. Choose a new username and password, then press Create account.');$('ssc-user')?.focus()}
+ if(kind==='login'&&!person){
+  const next=sessionStorage.getItem('ss-cloud-next-action');
+  if(next==='register'||next==='switch'){
+    sessionStorage.removeItem('ss-cloud-next-action');
+    cloudNotice(next==='register'?'Add an account: choose a fresh username and password.':'Select a previously used account or type another username, then enter its password.');
+    if(next==='register')$('ssc-user')?.focus();
+  }
+ }
  $('ssc-close').hidden=!(person&&kind==='account'&&!banned(profile));
  if(kind==='banned')showBanned();
  return gate;
@@ -182,7 +251,7 @@ function exportMine(kind){const items=remote?.data||studyItems();const result={k
  download('study-summit-'+kind+'-'+Date.now()+'.json',result)}
 async function refreshProfile(){if(!person)return false;const {data,error}=await client.from('ss_profiles').select('id,username,role,banned,banned_until,ban_reason').eq('id',person.id).single();
  if(error){cloudNotice('Account status unavailable: '+error.message);return false}profile=data;role=profile.role||'student';
- try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
+ try{sessionStorage.setItem('ss-cloud-display-name',profile.username)}catch(_){}rememberUsername(profile.username);if(banned(profile)){live=false;showBanned()}else{const gate=$('ssCloudGate');if(gate&&!gate.hidden&&$('ssc-bannedArea')&&!$('ssc-bannedArea').hidden){gate.hidden=true;}updateHeader()}return true}
 async function getRemote(){const {data,error}=await client.from('ss_study_data').select('data,updated_at').eq('user_id',person.id).maybeSingle();if(error)throw Error(error.message);return data}
 function updateHeader(){const summary=$('sdAccountSummary');if(summary)summary.textContent=`@${profile.username} · Cloud ${role} · study data synced`;const topLabel=$('sdTopAccountLabel');if(topLabel)topLabel.textContent='@'+profile.username;const currentProfile=$('ssCurrentProfile');if(currentProfile)currentProfile.textContent='@'+profile.username;const toggle=$('sdAccountOpen');if(toggle)toggle.textContent='@'+profile.username;const log=$('sdAccountLogout');if(log){log.textContent='Sign out';log.style.display='inline-flex';log.hidden=false;}
  const names={owner:'👑 Owner Dashboard',admin:'🛡 Admin Dashboard',moderator:'⚑ Moderator Dashboard'};
@@ -213,10 +282,10 @@ function installOwnerNavigation(){
 }
 function installButtons(){document.documentElement.classList.add('ss-cloud-active');
  const localShade=$('sdAuthShade');if(localShade)localShade.style.display='none';
- const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate('account');cloudNotice(`Signed in as @${profile?.username||'…'}. Sign out below to switch accounts.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
+ const open=$('sdAccountOpen');if(open)open.onclick=()=>{showGate('account');cloudNotice(`Signed in as @${profile?.username||'…'}. Switch accounts or update your password below.`);$('ssc-loginArea').hidden=true;$('ssc-logout').parentElement.hidden=false};
  const logout=$('sdAccountLogout');if(logout){logout.style.display='inline-flex';logout.hidden=false;logout.onclick=signOutCloud;}
  const actions=document.querySelector('.sd-profile-actions')||document.querySelector('.sd-profile-side')||document.body;
- if(!$('ssCloudAccountBtn')){const button=document.createElement('button');button.id='ssCloudAccountBtn';button.type='button';button.className='btn secondary small';button.textContent='☁ Cloud account';button.onclick=()=>open?.click();actions.append(button)}
+ if(!$('ssCloudAccountBtn')){const button=document.createElement('button');button.id='ssCloudAccountBtn';button.type='button';button.className='btn secondary small';button.textContent='☁ Manage account';button.onclick=()=>open?.click();actions.append(button)}
  if(!$('ssCloudImportBtn')){const button=document.createElement('button');button.id='ssCloudImportBtn';button.type='button';button.className='btn secondary small';button.textContent='Import old backup';button.onclick=importLegacy;actions.append(button)}
  if(!$('ssCloudStaffBtn')){const button=document.createElement('button');button.id='ssCloudStaffBtn';button.type='button';button.className='btn secondary small';button.textContent='⚑ Cloud staff';button.onclick=()=>openStaff();actions.append(button)}
  if(!$('ssCloudReportBtn')){const button=document.createElement('button');button.id='ssCloudReportBtn';button.type='button';button.className='btn secondary small';button.textContent='Report an issue';button.onclick=sendReport;actions.append(button)}
@@ -231,10 +300,19 @@ function installButtons(){document.documentElement.classList.add('ss-cloud-activ
 }
 let lastUpload=Promise.resolve();
 function scheduleSync(){if(!live||syncing||banned(profile)||!person)return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>{uploadSnapshot().catch(e=>cloudNotice('Sync issue: '+e.message))},1800)}
-async function uploadSnapshot(){if(!live||syncing||banned(profile))return;const contents=studyItems(),snapshot=JSON.stringify(contents);if(snapshot===lastSnapshot)return;
+async function uploadSnapshot(){if(!live||syncing||banned(profile)||!person)return;const uploadFor=person.id,contents=studyItems(),snapshot=JSON.stringify(contents);if(snapshot===lastSnapshot)return;
  if(snapshot.length>1400000){cloudNotice('Cloud storage limit reached. Export a backup and remove some large study documents.');return}
- lastUpload=lastUpload.then(async()=>{const {data,error}=await client.from('ss_study_data').upsert({user_id:person.id,data:contents,updated_at:new Date().toISOString()},{onConflict:'user_id'}).select('updated_at').single();
-   if(error)throw Error(error.message);remote={data:contents,updated_at:data.updated_at};lastSnapshot=snapshot}).catch(err=>{cloudNotice('Cloud sync failed: '+err.message)});
+ lastUpload=lastUpload.then(async()=>{
+    if(!live||person?.id!==uploadFor)return;
+    const {data,error}=await client.from('ss_study_data').upsert({user_id:uploadFor,data:contents,updated_at:new Date().toISOString()},{onConflict:'user_id'}).select('updated_at').single();
+    if(error)throw Error(error.message);
+    if(person?.id===uploadFor){
+      remote={data:contents,updated_at:data.updated_at};lastSnapshot=snapshot;lastSyncAt=Date.now();lastSyncError='';
+      window.dispatchEvent(new Event('ss-cloud-sync'));
+    }
+  }).catch(error=>{
+    if(person?.id===uploadFor){lastSyncError=String(error?.message||error);cloudNotice('Cloud sync failed: '+lastSyncError);window.dispatchEvent(new Event('ss-cloud-sync'))}
+  });
  await lastUpload;
 }
 const nativeSet=Storage.prototype.setItem;
@@ -386,6 +464,14 @@ function addStyling(){const style=document.createElement('style');style.textCont
 .ssc-row{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}.ssc-row>button{flex:1}.ssc-shell button,.ssc-staffbox button{cursor:pointer;border:1px solid #8a89d8;background:#7978d6;color:#fff;border-radius:9px;padding:9px 13px;font-weight:720;font:inherit}
 .ssc-methods{display:flex;gap:8px;margin:16px 0}.ssc-methods button{flex:1;font-size:12px;padding:9px 6px}.ssc-methods .ssc-selected{background:#7978d6!important;border-color:#9c9bfd!important;color:#fff!important}.ssc-shell button.ssc-light,.ssc-staffbox button.ssc-light{background:#25324c;border-color:#49607d}.ssc-shell button:hover,.ssc-staffbox button:hover{filter:brightness(1.2)}
 .ssc-shell .ssc-forgot{display:block;margin:12px 0;width:100%;font-size:12px}
+.ssc-recentList{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.ssc-recent-label{font-size:12px}
+.ssc-recentItem{display:inline-flex;gap:3px}
+.ssc-recentItem button{padding:6px 10px!important;font-size:12px!important}
+.ssc-change-pass{margin:14px 0;border:1px solid #40526e;padding:12px;border-radius:10px}
+.ssc-change-pass summary{cursor:pointer;font-weight:700}
+.ssc-change-pass[hidden]{display:none!important}
+.ssc-change-pass button{margin-top:12px}
 .ssc-shell #ssc-recovery[hidden]{display:none!important}
 #ssCloudRecoveryRequests{display:grid;gap:10px;margin-top:12px}
 .ssc-recovery-row{border:1px solid #34435c;border-radius:12px;padding:12px;overflow-wrap:anywhere}

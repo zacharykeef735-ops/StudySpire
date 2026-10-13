@@ -96,6 +96,7 @@ test('an unavailable model falls back to a known compatible model', () => {
     modelSelect:{value:'not-supported'},
     localStorage:{setItem:()=>{}},
     sdAccountKey:key=>key,
+    el:()=>null,
     setStatus:()=>{}
   };
   const run=`let chosenModelId='Qwen2.5-3B-Instruct-q4f16_1-MLC';
