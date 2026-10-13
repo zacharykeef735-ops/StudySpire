@@ -98,6 +98,28 @@ Signed-in StudySpire users can upload a small profile photo. The browser convert
 
 Any signed-in account, including a Moderator, can report another user's current photo by exact username, with a reason. Reports include a snapshot of that photo for the staff inbox. Reports cannot target your own account; duplicates for the same picture revision and excessive reporting are blocked. Moderators can review/remove Student photos, Admins can handle Student/Moderator photos and restrict uploads, and Owners can handle any other account. A staff member cannot remove an unreported newer version while reviewing an older report. Reports and restrictions are permission-checked inside Supabase and audited where staff act. After reviewing a report, the stored snapshot is cleared. The migration is documented in `profile-picture-moderation-migration.sql`.
 
+## Verified roles, bios and account deletion
+
+### Visible staff titles and bios
+
+StudySpire displays **👑 Owner**, **🛡 Admin**, and **⚑ Moderator** badges alongside the matching accounts in Cloud messaging, friends, profiles and the account header. The badges are looked up by exact username from Supabase: editing your displayed name or page HTML cannot give you staff privileges. Public profile lookups expose only the username, verified role, and optional bio. Users edit their own **180-character bio** in **Account → Profile & bio**; other users can read it on the profile. Keep sensitive personal details out of your bio.
+
+### Chat word filter and moderation
+
+Chat messages are checked **inside Supabase before insertion**. If a message contains prohibited swearing or hateful language, it is not delivered, the composer keeps the draft for editing, and the user sees a clear blocked-and-flagged notice. The private flag log records sender, recipient, type and time for staff review, **not the full rejected message**. Staff can check recent flags from the Cloud staff Reports panel. Normal language and ordinary words containing similar letter sequences should still send. Language filters are imperfect; users can still report inappropriate content that slips through.
+
+### Self-service account deletion
+
+Open **Account → Delete my account permanently**. You must enter your exact username, current password, the word `DELETE`, and confirm the final warning. The server verifies your own authenticated account and password before deleting its Cloud profile, credentials, saved Cloud study data, friendships, chat messages and avatar. A last remaining Owner is protected from self-deletion so the project cannot lose its final administrator. Deleting your account cannot erase browser-local backups on other devices; remove those separately if needed.
+
+### Permanent ban expiry
+
+A permanent ban begins a **30-day waiting period**. The database stores the ban timestamp and a private `pg_cron` task checks every day for eligible non-Owner accounts. After the waiting period, the task permanently deletes the banned account and its associated Cloud data. Removing the ban before expiry cancels the deletion eligibility. Pre-existing permanent bans started their waiting period when the feature was installed to avoid deleting accounts unexpectedly. The banned-account screen shows a planned eligibility date and offers data export before the deadline. Owner accounts are excluded from automated removal.
+
+### Navigation and Mini note names
+
+The sidebar collapse arrow minimizes navigation to a compact icon rail on desktop. On narrow screens the menu opens as a slide-out panel; your desktop preference is preserved. In **Mini → Notes**, type directly into **Note name — type to rename** at the top. The saved-note dropdown beneath it is only for switching between existing notes. Notes autosave when you type.
+
 ## Progress, focus and quick actions
 
 StudySpire's compact Study Hub adds a dashboard built around the study content you already have:
