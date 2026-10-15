@@ -1054,7 +1054,10 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         <div class="fieldgroup"><label class="label" for="ssTutorSpeed">Tutor response speed</label><select id="ssTutorSpeed" class="field"><option value="fast">Fast — brief hints (recommended)</option><option value="balanced">Balanced — a little more detail</option><option value="detailed">Detailed — slower explanations</option></select><div class="hint">Fast mode uses fewer words and less conversation history. Model size still determines most of the speed.</div></div><div class="hint" id="modelDetailHint">Choose by speed or specialty. Recommended all-rounder: Llama 3.2 1B on most devices, or Llama 3.2 3B on stronger hardware. Switching models requires a separate first download; browser cache may speed up later launches. Requires WebGPU. These models are text-only and cannot inspect worksheet images.</div>
       </div>
       <div id="ssHostedTutorStatus" class="hint" style="margin:0 0 12px" role="status" aria-live="polite">Hosted tutoring is optional. A signed-in student can check their individual daily question allowance. Provider credits remain shared for the whole site.</div>
-      <button id="ssHostedTutorQuota" type="button" class="btn secondary small" style="margin-bottom:12px">Check hosted question allowance</button>
+      <div class="row" style="gap:9px;flex-wrap:wrap;margin-bottom:12px">
+        <button id="ssHostedTutorQuota" type="button" class="btn secondary small">Check question allowance</button>
+        <button id="ssHostedTutorTest" type="button" class="btn secondary small">Test hosted AI connection</button>
+      </div>
       <p class="hint" id="ssHostedTutorInfo">StudySpire first checks 20 reviewed study guides (0 AI neurons). Other questions use the hosted tutor for signed-in students, with separate per-student limits and a shared provider allowance. If hosted AI is unavailable, you can choose free browser AI.</p>
       <div class="row">
         <button class="btn primary" id="loadLocalModel" type="button">⬇ Load browser AI</button>
@@ -1074,6 +1077,26 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         output.textContent='Your remaining hosted questions today: '+left+' / '+Number(q.daily_limit)+'. Shared site allowance remaining: '+Math.max(0,Number(q.site_limit)-Number(q.site_used))+'. Reset: '+new Date(q.reset_utc).toLocaleString()+'.';
       }catch(err){output.textContent='Could not check hosted AI allowance: '+(err?.message||'Unknown error');}
     });
+    el('ssHostedTutorTest').addEventListener('click',async()=>{
+      const output=el('ssHostedTutorStatus');
+      const button=el('ssHostedTutorTest');
+      const bridge=window.StudySpireHostedAI;
+      if(!bridge?.available()){
+        output.textContent='Sign in to StudySpire Cloud to test the hosted AI connection.';
+        return;
+      }
+      button.disabled=true;
+      output.textContent='Checking secure hosted AI settings (no AI questions used)…';
+      try{
+        const result=await bridge.diagnose();
+        output.textContent=result.message||'Diagnostic finished. Code: '+String(result.code||'UNKNOWN');
+        output.dataset.testStatus=result.code||'UNKNOWN';
+      }catch(error){
+        output.textContent='Connection diagnostic failed: '+(error?.message||'Unknown error');
+        output.dataset.testStatus='CHECK_FAILED';
+      }finally{button.disabled=false}
+    });
+
 
     // Prevent first-load failures from looking like a permanent 0% spinner.
     // The engine needs WebGPU and downloads model weights from third-party hosts.
@@ -2213,7 +2236,7 @@ renderEverything();
 </script>
 <!-- StudySpire v3.77: username/password accounts; older email Owners retained -->
 <script src="cloud-config.js"></script>
-<script src="cloud.js?v=4.03"></script>
+<script src="cloud.js?v=4.04"></script>
 <script src="enhancements.js?v=3.81"></script>
 <script src="messaging.js?v=3.92"></script>
 <script src="help-guide.js?v=3.94"></script>
