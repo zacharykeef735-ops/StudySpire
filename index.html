@@ -853,7 +853,7 @@ function requireConnected(){throw new Error('Open Settings → AI & Mini and loa
 async function prepareImage(file){if(!file.type.startsWith('image/'))throw new Error('Please choose an image file such as PNG, JPG, or WebP.');if(file.size>15*1024*1024)throw new Error('That image is over 15 MB. Try a smaller screenshot.');const src=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Could not read that image.'));r.readAsDataURL(file)});const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error('Could not open that image.'));img.src=src});const scale=Math.min(1,1700/Math.max(img.width,img.height));const canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/jpeg',.84)}
 $('questionFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{state.attachment=await prepareImage(file);state.attachmentName=file.name;$('previewImg').src=state.attachment;$('previewName').textContent=file.name;$('questionPreview').classList.add('show');toast('Worksheet image added.')}catch(err){status('askStatus',err.message,'bad')}e.target.value=''});
 $('removeAttachment').onclick=()=>{state.attachment=null;state.attachmentName='';$('questionPreview').classList.remove('show');$('previewImg').src=''};
-$('askBtn').onclick=async()=>{const prompt=$('questionInput').value.trim();if(!prompt&&!state.attachment){status('askStatus','Type a question or attach a worksheet picture first.','warn');return}const btn=$('askBtn');btn.disabled=true;btn.textContent='Thinking…';clearStatus('askStatus');try{requireConnected();const answer=await sendToAI(currentMessages({kind:'question',prompt,context:$('extraContext').value.trim(),style:$('answerStyle').value,imageDataUrl:state.attachment}),null,2600);state.lastAnswer=answer;state.lastQuestion=prompt||('Worksheet: '+state.attachmentName);state.lastProvider='Browser tutor';$('answerOutput').textContent=answer;$('answerTag').textContent=state.lastProvider;$('answerEmpty').classList.add('hidden');$('answerPanel').classList.remove('hidden');status('askStatus','Tutor explanation ready. Try the next step yourself, or request another hint.','good')}catch(e){status('askStatus',e.message,'bad')}finally{btn.disabled=false;btn.textContent='✦ Explain and guide me'}};
+$('askBtn').onclick=async()=>{const prompt=$('questionInput').value.trim();if(!prompt&&!state.attachment){status('askStatus','Type a question or attach a worksheet picture first.','warn');return}const btn=$('askBtn');btn.disabled=true;btn.textContent='Thinking…';clearStatus('askStatus');try{requireConnected();const answer=await sendToAI(currentMessages({kind:'question',prompt,context:$('extraContext').value.trim(),style:$('answerStyle').value,imageDataUrl:state.attachment}),null,2600);state.lastAnswer=answer;state.lastQuestion=prompt||('Worksheet: '+state.attachmentName);state.lastProvider=window.StudySpireTutorLastProvider||'Browser tutor';$('answerOutput').textContent=answer;$('answerTag').textContent=state.lastProvider;$('answerEmpty').classList.add('hidden');$('answerPanel').classList.remove('hidden');status('askStatus','Tutor explanation ready. Try the next step yourself, or request another hint.','good')}catch(e){status('askStatus',e.message,'bad')}finally{btn.disabled=false;btn.textContent='✦ Explain and guide me'}};
 $('clearQuestion').onclick=()=>{$('questionInput').value='';$('extraContext').value='';$('removeAttachment').click();clearStatus('askStatus')};document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{$('questionInput').value=b.dataset.prompt;$('questionInput').focus();switchPage('answer')});
 $('copyAnswer').onclick=async()=>{try{await navigator.clipboard.writeText(state.lastAnswer);toast('Answer copied.')}catch(e){toast('Clipboard not available. Select and copy the answer manually.')}};
 $('saveAnswer').onclick=()=>{if(!state.lastAnswer){toast('There is no answer to save yet.');return}addHistory('answer',state.lastQuestion||'Answer',state.lastAnswer);toast('Answer saved.')};$('followUpBtn').onclick=()=>{$('questionInput').value='Earlier question: '+(state.lastQuestion||'(worksheet)')+'\nTutor explained:\n'+state.lastAnswer.slice(-1900)+'\n\nHere is what I tried / still don\'t understand: ';$('questionInput').focus();window.scrollTo({top:0,behavior:'smooth'})};
@@ -1053,6 +1053,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         </select>
         <div class="fieldgroup"><label class="label" for="ssTutorSpeed">Tutor response speed</label><select id="ssTutorSpeed" class="field"><option value="fast">Fast — brief hints (recommended)</option><option value="balanced">Balanced — a little more detail</option><option value="detailed">Detailed — slower explanations</option></select><div class="hint">Fast mode uses fewer words and less conversation history. Model size still determines most of the speed.</div></div><div class="hint" id="modelDetailHint">Choose by speed or specialty. Recommended all-rounder: Llama 3.2 1B on most devices, or Llama 3.2 3B on stronger hardware. Switching models requires a separate first download; browser cache may speed up later launches. Requires WebGPU. These models are text-only and cannot inspect worksheet images.</div>
       </div>
+      <p class="hint" id="ssHostedTutorInfo">Signed-in students can use optional hosted tutoring when a project administrator activates it. Each student's daily question allowance is separate, but the provider's free usage is shared. If hosted AI is unavailable, the free browser tutor below still works.</p>
       <div class="row">
         <button class="btn primary" id="loadLocalModel" type="button">⬇ Load browser AI</button>
         <button class="btn ghost" id="unloadLocalModel" type="button">Disconnect</button>
@@ -1312,11 +1313,28 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
   // context/output for smaller devices (especially floating Mini).
   let generating = false;
   window.sendToAI = async function (messages, _credentials, maxTokens) {
+    if (generating) throw new Error('The tutor is already responding. Please wait for it to finish.');
+    const hosted=window.StudySpireHostedAI;
+    // Each signed-in student has a separate daily quota on the server.
+    if(hosted?.available()){
+      generating=true;
+      try{
+        const answer=await hosted.ask(messages,maxTokens);
+        window.StudySpireTutorLastProvider='Hosted tutor';
+        return answer;
+      }catch(error){
+        if(!localEngine){
+          showFreeTutorSetup();
+          throw new Error((error?.message||'Hosted AI is unavailable')+' You can download the free browser tutor instead.');
+        }
+        console.warn('Hosted AI unavailable; using the downloaded browser tutor.');
+      }finally{generating=false}
+    }
     if (!localEngine) {
       showFreeTutorSetup();
-      throw new Error('Select “Download free tutor” to enable AI on your device, then try your question again.');
+      throw new Error('Sign in to StudySpire Cloud for hosted AI, or choose the free browser tutor.');
     }
-    if (generating) throw new Error('The tutor is already responding. Please wait for it to finish.');
+    window.StudySpireTutorLastProvider='Browser tutor';
     const converted = (Array.isArray(messages) ? messages : []).map(message => {
       let content=message?.content;
       if(Array.isArray(content)) content=content.map(part => part.type==='text' ? (part.text||'') : part.type==='image_url' ? '[Image attached. This text-only model cannot inspect it; ask the student to type the text.]' : '').join('\n');
@@ -1347,9 +1365,9 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
     }finally{generating=false;}
   };
   window.requireConnected = function () {
-    if (!localEngine) {
+    if(!localEngine&&!window.StudySpireHostedAI?.available()){
       showFreeTutorSetup();
-      throw new Error('Choose “Download free tutor” in the setup dialog. After it loads, try again.');
+      throw new Error('Sign in to StudySpire Cloud for hosted AI, or download the free browser tutor.');
     }
   };
 
@@ -2168,7 +2186,7 @@ renderEverything();
 </script>
 <!-- StudySpire v3.77: username/password accounts; older email Owners retained -->
 <script src="cloud-config.js"></script>
-<script src="cloud.js?v=4.02"></script>
+<script src="cloud.js?v=4.03"></script>
 <script src="enhancements.js?v=3.81"></script>
 <script src="messaging.js?v=3.92"></script>
 <script src="help-guide.js?v=3.94"></script>

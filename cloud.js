@@ -425,6 +425,34 @@ window.StudySummitMessagingBridge={
   return rpc(name,args);
  }
 };
+// Optional hosted tutor uses the signed-in StudySpire account.
+// AI provider tokens are held ONLY by the Supabase Edge Function.
+window.StudySpireHostedAI={
+ available:()=>Boolean(ready&&client&&live&&person&&profile&&!banned(profile)),
+ quota:async()=>{
+  if(!window.StudySpireHostedAI.available())throw Error('Sign in to StudySpire Cloud first.');
+  const {data,error}=await client.rpc('ss_ai_status');
+  if(error)throw Error(error.message);
+  return data;
+ },
+ ask:async(messages,maxTokens)=>{
+  if(!window.StudySpireHostedAI.available())throw Error('Sign in to StudySpire Cloud first.');
+  const {data,error}=await client.functions.invoke('studyspire-tutor',{
+   body:{messages,maxTokens:Math.min(450,Math.max(90,Number(maxTokens)||220))}
+  });
+  if(error){
+   let details=null;
+   try{details=await error.context?.json?.()}catch(_){}
+   const issue=new Error(details?.message||error.message||'Hosted tutor unavailable.');
+   issue.code=details?.code||'HOSTED_UNAVAILABLE';throw issue;
+  }
+  if(!data?.ok||typeof data?.answer!=='string'||!data.answer.trim()){
+   const issue=new Error(data?.message||'Hosted AI returned no explanation.');
+   issue.code=data?.code||'HOSTED_UNAVAILABLE';throw issue;
+  }
+  return data.answer;
+ }
+};
 // Public profile labels expose only server-verified username, role and bio.
 // This read-only RPC is available even for guests; no client can grant itself a role.
 const PUBLIC_PROFILE_ALLOWED=new Set(['ss_public_profile','ss_public_titles']);
