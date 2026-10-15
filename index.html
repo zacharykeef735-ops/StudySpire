@@ -929,6 +929,16 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
 #localModelStatus.warn{border-color:#65502d;background:#272012;color:#f5d69d}
 #localModelStatus.bad{border-color:#68323a;background:#2a151a;color:#ffb5bc}
 #localAiPanel{margin-bottom:14px} #localModelChoice{min-width:0} #modelDetailHint{margin-top:7px}
+.ss-free-ai-overlay[hidden]{display:none!important}
+.ss-free-ai-overlay{position:fixed;inset:0;z-index:100100;background:rgba(7,12,24,.83);display:grid;place-items:center;padding:16px}
+.ss-free-ai-dialog{width:min(100%,470px);max-height:calc(100vh - 32px);overflow:auto;border:1px solid #6c76a9;background:#19253b;color:#f4f7ff;border-radius:20px;padding:23px;box-shadow:0 20px 64px #0009}
+.ss-free-ai-dialog h2{font-size:21px;line-height:1.3;margin:0 0 10px}
+.ss-free-ai-dialog p{font-size:13px;line-height:1.6;color:#c2d0e8;margin:10px 0}
+.ss-free-ai-dialog .ss-free-ai-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.ss-free-ai-dialog button{min-height:42px;border-radius:10px;padding:10px 14px}
+.ss-free-ai-dialog #ssFreeTutorDownload{background:linear-gradient(110deg,#7b75df,#457fc0);color:white;border:0;font-weight:800}
+.ss-free-ai-dialog #ssFreeTutorCancel{background:#26364e;border:1px solid #50617e;color:#e4ebfa}
+.ss-free-ai-dialog button:focus-visible{outline:3px solid #b1b1ff;outline-offset:3px}
 </style>
 <script>
 (function () {
@@ -946,6 +956,40 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
   let loading = false;
   let loadGeneration = 0;
   let loadNeedsReload = false;
+  let freeTutorDialog = null;
+  function dismissFreeTutorSetup() {
+    if (freeTutorDialog) freeTutorDialog.hidden = true;
+  }
+  function showFreeTutorSetup() {
+    if (localEngine) return;
+    if (!freeTutorDialog) {
+      const overlay = document.createElement('div');
+      overlay.id = 'ssFreeTutorOffer';
+      overlay.className = 'ss-free-ai-overlay';
+      overlay.hidden = true;
+      overlay.innerHTML = '<section class="ss-free-ai-dialog" role="dialog" aria-modal="true" aria-labelledby="ssFreeTutorTitle" aria-describedby="ssFreeTutorInfo"><h2 id="ssFreeTutorTitle">✦ Set up your free AI tutor</h2><p id="ssFreeTutorInfo">StudySpire can teach with a browser AI model that runs directly on your device — no API account, credit card, or subscription needed.</p><p><strong>Before you download:</strong> The first model download requires internet, can be large, and needs a WebGPU-compatible browser and device. Downloading is optional and only starts when you choose it.</p><p>We recommend starting with the smaller model. Your tutor will give hints and explain concepts rather than simply finishing homework.</p><div class="ss-free-ai-actions"><button id="ssFreeTutorDownload" type="button">⬇ Download free tutor</button><button id="ssFreeTutorCancel" type="button">Not now</button></div></section>';
+      document.body.append(overlay);
+      overlay.addEventListener('click',event => { if (event.target === overlay) dismissFreeTutorSetup(); });
+      overlay.querySelector('#ssFreeTutorCancel').addEventListener('click',dismissFreeTutorSetup);
+      overlay.querySelector('#ssFreeTutorDownload').addEventListener('click',() => {
+        dismissFreeTutorSetup();
+        const shade = el('settingsShade');
+        if (shade) shade.classList.add('open');
+        showLocalSettings();
+        const choice = el('localModelChoice');
+        if (choice) {
+          choice.value = 'SmolLM2-360M-Instruct-q4f32_1-MLC';
+          choice.dispatchEvent(new Event('change'));
+        }
+        const start = el('loadLocalModel');
+        if (start && !start.disabled) start.click();
+        else setStatus('Free tutor download is already starting. Check the AI settings for progress.', 'info');
+      });
+      freeTutorDialog = overlay;
+    }
+    freeTutorDialog.hidden = false;
+    freeTutorDialog.querySelector('#ssFreeTutorDownload')?.focus();
+  }
 
   function savedModelChoice() {
     try {
@@ -963,6 +1007,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
   }
   function setConnected(on) {
     state.connected = !!on;
+    if (on) dismissFreeTutorSetup();
     state.provider = "local";
     state.model = on ? (loadedModelId || savedModelChoice()) : "";
     if (typeof updateConnectionUI === "function") updateConnectionUI();
@@ -1267,7 +1312,10 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
   // context/output for smaller devices (especially floating Mini).
   let generating = false;
   window.sendToAI = async function (messages, _credentials, maxTokens) {
-    if (!localEngine) throw new Error('Open Settings → AI & Mini and press Load browser tutor.');
+    if (!localEngine) {
+      showFreeTutorSetup();
+      throw new Error('Select “Download free tutor” to enable AI on your device, then try your question again.');
+    }
     if (generating) throw new Error('The tutor is already responding. Please wait for it to finish.');
     const converted = (Array.isArray(messages) ? messages : []).map(message => {
       let content=message?.content;
@@ -1299,7 +1347,10 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
     }finally{generating=false;}
   };
   window.requireConnected = function () {
-    if (!localEngine) throw new Error("Open Settings and press “Load browser AI” first.");
+    if (!localEngine) {
+      showFreeTutorSetup();
+      throw new Error('Choose “Download free tutor” in the setup dialog. After it loads, try again.');
+    }
   };
 
   // Clear the old API-only status at startup; don't require the local model until the user loads it.

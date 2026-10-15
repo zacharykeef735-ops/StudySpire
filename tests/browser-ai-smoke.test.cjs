@@ -108,6 +108,18 @@ result=chosenModelId;`;
   assert.equal(state.modelSelect.value,state.DEFAULT_MODEL_ID);
 });
 
+test('the free on-device tutor is offered before any download starts', () => {
+  assert.match(html,/function showFreeTutorSetup\(\)/);
+  assert.match(html,/id = 'ssFreeTutorOffer'/);
+  assert.match(html,/id="ssFreeTutorDownload"/);
+  assert.match(html,/Downloading is optional and only starts when you choose it/);
+  assert.match(html,/SmolLM2-360M-Instruct-q4f32_1-MLC/);
+  assert.match(html,/showFreeTutorSetup\(\);\s*throw new Error\('Choose/);
+  assert.match(html,/start\.click\(\)/);
+  assert.match(html,/if \(on\) dismissFreeTutorSetup\(\)/);
+  assert.doesNotMatch(html,/https:\/\/generativelanguage\.googleapis\.com/);
+});
+
 test('AI loading stops on persistent 0% stalls, without concurrent GPU retries', () => {
   assert.match(html,/loadWithWatchdog/);
   assert.match(html,/240000/);
