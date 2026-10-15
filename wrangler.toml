@@ -1,0 +1,4 @@
+name = "studyspire-guides"
+main = "cloudflare/studyspire-guides/index.mjs"
+compatibility_date = "2026-10-15"
+workers_dev = true
