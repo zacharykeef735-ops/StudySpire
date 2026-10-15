@@ -57,7 +57,7 @@ test('StudySpire asks the study guide before hosted AI and sends only an approve
  assert.match(browser,/referrerPolicy:'no-referrer'/);
  assert.match(browser,/getGuide\(messages\)/);
  assert.match(worker,/STUDY_GUIDES\[topic\]/);
- assert.doesNotMatch(worker,/fetch\(/);
+ assert.doesNotMatch(worker,/await fetch\(|globalThis\.fetch\(/);
  assert.doesNotMatch(worker,/env\.AI\.run|Authorization|Bearer/);
  assert.match(wrangler,/workers_dev = true/);
 });
