@@ -599,7 +599,7 @@ async function openStaff(){if(!person||!['owner','admin','moderator'].includes(r
  for(const name of ['ssCloudAccountSearch','ssCloudReportSearch'])$(name).oninput=applyStaffFilters;
  for(const name of ['ssCloudAccountFilter','ssCloudReportFilter'])$(name).onchange=applyStaffFilters;
  $('ssCloudRefresh').onclick=()=>renderStaff().catch(e=>staffMsg(e.message));
- $('ssCloudExportReports').onclick=()=>download('study-summit-reports-'+Date.now()+'.json',{exported:new Date().toISOString(),reports:staffData.reports});
+ $('ssCloudExportReports').onclick=()=>download('study-summit-reports-'+Date.now()+'.json',{exported:new Date().toISOString(),reports:staffData.reports,profile_picture_reports:staffData.avatarReports});
  $('ssCloudExportAudit').onclick=()=>download('study-summit-admin-audit-'+Date.now()+'.json',{exported:new Date().toISOString(),actions:staffData.audit});
  modal.querySelector('.ssc-staffbox').focus();
  window.StudySpireAvatars?.mountStaff(modal);
@@ -627,7 +627,7 @@ async function renderRecovery(){
   buttons.append(issue,deny);row.append(buttons);container.append(row)
  }
 }
-let staffData={users:[],reports:[],audit:[]};
+let staffData={users:[],reports:[],avatarReports:[],audit:[]};
 function staffMsg(message){if($('ssCloudStaffMsg'))$('ssCloudStaffMsg').textContent=message}
 function applyStaffFilters(){
  const s=($('ssCloudAccountSearch')?.value||'').toLowerCase().trim(),filter=$('ssCloudAccountFilter')?.value||'all';
@@ -637,13 +637,15 @@ function applyStaffFilters(){
 }
 
 async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=role==='owner'||role==='admin';
- const [users,reports,audit,chatFlags]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([]),rpc('ss_staff_chat_flags')]);
- staffData={users,reports,audit};const summary=$('ssCloudAdminSummary');if(summary){summary.replaceChildren();
+ const [users,reports,audit,chatFlags,avatarData]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([]),rpc('ss_staff_chat_flags'),rpc('ss_avatar_staff_overview')]);
+ const avatarReports=Array.isArray(avatarData?.reports)?avatarData.reports:[];
+ staffData={users,reports,avatarReports,audit};
+ const openReportCount=reports.filter(r=>r.status==='open').length+avatarReports.filter(r=>r.status==='open').length;const summary=$('ssCloudAdminSummary');if(summary){summary.replaceChildren();
  const overview=role==='moderator'
-   ? [[reports.filter(r=>r.status==='open').length,'Open reports'],[Array.isArray(chatFlags)?chatFlags.length:0,'Blocked attempts']]
+   ? [[openReportCount,'Open reports'],[Array.isArray(chatFlags)?chatFlags.length:0,'Blocked attempts']]
    : role==='admin'
-   ? [[users.length,'Managed accounts'],[reports.filter(r=>r.status==='open').length,'Open reports'],[users.filter(u=>u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())).length,'Active bans']]
-   : [[users.length,'Accounts'],[users.filter(u=>u.role==='owner').length,'Owners'],[reports.filter(r=>r.status==='open').length,'Open reports'],[users.filter(u=>u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())).length,'Active bans'],[users.filter(u=>u.role!=='student').length,'Staff']];
+   ? [[users.length,'Managed accounts'],[openReportCount,'Open reports'],[users.filter(u=>u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())).length,'Active bans']]
+   : [[users.length,'Accounts'],[users.filter(u=>u.role==='owner').length,'Owners'],[openReportCount,'Open reports'],[users.filter(u=>u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())).length,'Active bans'],[users.filter(u=>u.role!=='student').length,'Staff']];
  for(const [number,label] of overview){const tile=document.createElement('div');tile.className='ssc-summary-tile';const strong=document.createElement('strong');strong.textContent=number;const small=document.createElement('small');small.textContent=label;tile.append(strong,small);summary.append(tile)}}
  const manager=$('ssCloudRoleTools'),target=$('ssCloudTargetUser');if(manager)manager.hidden=role!=='owner';
  if(target){const old=target.value;target.replaceChildren();for(const u of users.filter(u=>u.id!==person?.id))target.add(new Option('@'+u.username+' · '+u.role,u.id));if(users.some(u=>u.id===old&&u.id!==person?.id))target.value=old;const onPick=()=>{const u=users.find(user=>user.id===target.value);if(u)$('ssCloudTargetRole').value=u.role;};target.onchange=onPick;onPick();$('ssCloudApplyRole').disabled=role!=='owner'||!target.value;}
@@ -659,7 +661,33 @@ async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=
  else{const why=prompt('Reason for banning @'+u.username+' (required):');if(!why?.trim())return;const duration=prompt('Hours: 24 = 1 day, 168 = 7 days, 720 = 30 days, 0 = permanent','24');if(!['0','24','168','720'].includes(duration))return alert('Choose 0, 24, 168 or 720.');if(!confirm('Confirm ban for @'+u.username+'?'))return;await rpc('ss_change_ban',{target_user:u.id,ban_hours:Number(duration),reason:why,lift:false})}
  staffMsg('Ban action saved.');await renderStaff()}catch(e){staffMsg(e.message)}};row.append(ban)}box.append(row)}
  const reportsBox=$('ssCloudStaffReports');reportsBox.replaceChildren();for(const r of reports){const item=document.createElement('div');item.className='ssc-user';item.dataset.report=(r.about_username+' '+r.reporter_name+' '+r.reason).toLowerCase();item.dataset.status=r.status;const text=document.createElement('div');const line=document.createElement('strong');line.textContent=(r.status==='open'?'OPEN · ':'REVIEWED · ')+(r.about_username||'General report');const detail=document.createElement('small');detail.textContent='From @'+r.reporter_name+' · '+r.reason; text.append(line,detail);item.append(text);
- if(r.status==='open'){const review=document.createElement('button');review.className='ssc-light';review.textContent='Mark reviewed';review.onclick=async()=>{review.disabled=true;try{await rpc('ss_review_report',{report_id:r.id});await renderStaff();staffMsg('Report reviewed and automatically deleted. Action recorded in staff history.')}catch(e){staffMsg('Could not review report: '+e.message);review.disabled=false}};item.append(review)}reportsBox.append(item)}if(!reports.length)reportsBox.textContent='No open reports.';
+ if(r.status==='open'){const review=document.createElement('button');review.className='ssc-light';review.textContent='Mark reviewed';review.onclick=async()=>{review.disabled=true;try{await rpc('ss_review_report',{report_id:r.id});await renderStaff();staffMsg('Report reviewed and automatically deleted. Action recorded in staff history.')}catch(e){staffMsg('Could not review report: '+e.message);review.disabled=false}};item.append(review)}reportsBox.append(item)}for(const r of avatarReports){
+  const item=document.createElement('div');item.className='ssc-user';
+  item.dataset.report=('profile picture avatar '+(r.target_username||'')+' '+(r.reporter||'')+' '+(r.reason||'')).toLowerCase();
+  item.dataset.status=r.status;
+  const content=document.createElement('div');
+  const heading=document.createElement('strong');heading.textContent='🖼 PICTURE REPORT · @'+(r.target_username||'Unknown');
+  const detail=document.createElement('small');detail.textContent='From @'+(r.reporter||'Unknown')+' · '+(r.reason||'No reason');
+  content.append(heading,detail);
+  if(r.status!=='open'){const resolved=document.createElement('small');resolved.textContent='Resolved · '+r.status;content.append(resolved)}
+  else if(!r.can_moderate){const notice=document.createElement('small');notice.textContent='Requires higher-ranking staff to review';content.append(notice)}
+  item.append(content);
+  if(r.status==='open'&&r.can_moderate){
+    for(const [label,decision] of [['Remove picture','remove'],['Dismiss','dismiss']]){
+      const button=document.createElement('button');button.className='ssc-light';button.textContent=label;
+      button.onclick=async()=>{
+        if(decision==='remove'&&!confirm('Remove the reported profile picture from @'+r.target_username+'?'))return;
+        button.disabled=true;
+        try{await rpc('ss_avatar_staff_review',{report_id:r.id,decision});await renderStaff();staffMsg('Profile picture report reviewed.')}
+        catch(e){staffMsg('Could not review picture report: '+e.message);button.disabled=false}
+      };
+      item.append(button);
+    }
+  }
+  reportsBox.append(item);
+ }
+ if(!reports.length&&!avatarReports.length)reportsBox.textContent='No reports.';
+ applyStaffFilters();
  // Blocked chat attempts are logged server-side without retaining their message text.
  let languageFlags=$('ssCloudLanguageFlags');
  if(!languageFlags){
