@@ -32,12 +32,34 @@ Deno.serve(async(req:Request)=>{
   if(!own.ok)return fail(403,"ACCOUNT_UNAVAILABLE","This StudySpire account cannot use hosted AI.");
   const status=await own.json().catch(()=>null);
   if(!status?.profile_id)return fail(403,"ACCOUNT_UNAVAILABLE","Account verification failed.");
-  const cfToken=Deno.env.get("CLOUDFLARE_AI_TOKEN")||"";
-  const cfAccount=Deno.env.get("CLOUDFLARE_ACCOUNT_ID")||"";
-  if(!cfToken||!/^[a-f0-9]{32}$/i.test(cfAccount))
-   return fail(503,"NOT_CONFIGURED","Hosted AI has not been activated by a project administrator. Browser AI is still free.");
+  // Normalize pasted Dashboard values, and allow Cloudflare's customary API_TOKEN name.
+  // Never send the values or even their lengths to the browser or logs.
+  const cfToken=(Deno.env.get("CLOUDFLARE_AI_TOKEN")||Deno.env.get("CLOUDFLARE_API_TOKEN")||"").trim();
+  const cfAccount=(Deno.env.get("CLOUDFLARE_ACCOUNT_ID")||"").trim();
+  const cfAccountValid=/^[a-f0-9]{32}$/i.test(cfAccount);
   if(Number(req.headers.get("content-length")||0)>15000)return fail(413,"TOO_LARGE","Please shorten your question.");
   const body=await req.json().catch(()=>null);
+  // A zero-neuron, authenticated diagnostic; never returns secret text.
+  // This endpoint validates only credentials and does not reserve AI quota.
+  if(body?.action==="diagnose"){
+    if(!cfToken)return respond(200,{ok:true,ready:false,code:"TOKEN_MISSING",message:"Supabase has not provided CLOUDFLARE_AI_TOKEN to this function. Check the secret name and project, then save again."});
+    if(!cfAccount)return respond(200,{ok:true,ready:false,code:"ACCOUNT_ID_MISSING",message:"Supabase has not provided CLOUDFLARE_ACCOUNT_ID to this function. Check the secret name and project, then save again."});
+    if(!cfAccountValid)return respond(200,{ok:true,ready:false,code:"ACCOUNT_ID_INVALID",message:"Cloudflare Account ID is not 32 hexadecimal characters. Copy the Account ID (not a Zone ID or account name) from Cloudflare."});
+    try{
+      const check=await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify",{
+        headers:{"Authorization":"Bearer "+cfToken},signal:AbortSignal.timeout(10000)
+      });
+      const detail=await check.json().catch(()=>null);
+      if(!check.ok||detail?.success!==true||detail?.result?.status!=="active")
+        return respond(200,{ok:true,ready:false,code:"TOKEN_INVALID",message:"The stored Cloudflare API token could not be verified as active. Check that you copied the token value, not the token ID."});
+      return respond(200,{ok:true,ready:true,code:"TOKEN_ACTIVE",message:"Cloudflare API token is active and Account ID format is valid. Try a personalized tutor question to check Workers AI model access."});
+    }catch(_){
+      return respond(200,{ok:true,ready:false,code:"TOKEN_CHECK_UNAVAILABLE",message:"Credentials are present, but Cloudflare token verification timed out. Try the diagnostic again later."});
+    }
+  }
+  if(!cfToken)return fail(503,"TOKEN_MISSING","CLOUDFLARE_AI_TOKEN is missing from Supabase Edge Function Secrets. Choose browser AI while the project administrator configures it.");
+  if(!cfAccount)return fail(503,"ACCOUNT_ID_MISSING","CLOUDFLARE_ACCOUNT_ID is missing from Supabase Edge Function Secrets.");
+  if(!cfAccountValid)return fail(503,"ACCOUNT_ID_INVALID","CLOUDFLARE_ACCOUNT_ID is not a valid Cloudflare Account ID. Copy the 32-character account ID, not the account name.");
   if(!body||!Array.isArray(body.messages)||body.messages.length>14)return fail(400,"BAD_REQUEST","Provide a recent conversation (up to 14 messages).");
   const turns:{role:"user"|"assistant";content:string}[]=[];
   for(const message of body.messages){
