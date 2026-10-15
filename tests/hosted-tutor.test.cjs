@@ -11,7 +11,7 @@ const migration=read('studyspire-ai-quota-migration.sql');
 
 test('hosted AI starts first for signed-in users and has browser fallback',()=>{
  assert.match(html,/const hosted=window\.StudySpireHostedAI/);
- assert.match(html,/await hosted\.ask\(messages,maxTokens\)/);
+ assert.ok(html.includes('await hosted.ask(messages,maxTokens,window.StudySpireTutorOnChunk)'));
  assert.match(html,/showFreeTutorSetup\(\)/);
  assert.match(html,/StudySpireTutorLastProvider='Browser tutor'/);
  assert.match(html,/state\.lastProvider=window\.StudySpireTutorLastProvider/);
