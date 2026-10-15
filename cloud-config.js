@@ -5,5 +5,5 @@ window.STUDY_SUMMIT_CLOUD = {
   url: 'https://tcmlxpgomlfybgfdjeqj.supabase.co',
   publishableKey: 'sb_publishable_oBcEtziurOtmQJ2fg5a9og_cLtXbyH9',
   // Public URL only (not an API key). Set after deploying the optional guide Worker.
-  guideWorkerUrl: ''
+  guideWorkerUrl: ' https://studyspire.zacharykeef735.workers.dev'
 };
