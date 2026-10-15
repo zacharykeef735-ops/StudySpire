@@ -53,3 +53,19 @@ test('a hosted AI failure requires student consent before switching to installed
  assert.match(html,/if\(!localEngine\)\{\s*showFreeTutorSetup\(\)/);
  assert.doesNotMatch(html,/console\.warn\('Hosted AI unavailable; using the downloaded browser tutor/);
 });
+
+test('Cloudflare diagnostics disclose no credentials and do not consume questions',()=>{
+ assert.match(server,/body\?\.action==="diagnose"/);
+ assert.match(server,/api\.cloudflare\.com\/client\/v4\/user\/tokens\/verify/);
+ assert.match(server,/TOKEN_MISSING/);
+ assert.match(server,/ACCOUNT_ID_MISSING/);
+ assert.match(server,/ACCOUNT_ID_INVALID/);
+ assert.match(server,/TOKEN_INVALID/);
+ assert.match(server,/TOKEN_ACTIVE/);
+ assert.match(server,/\.trim\(\)/);
+ assert.match(cloud,/body:\{action:'diagnose'\}/);
+ assert.match(html,/id="ssHostedTutorTest"/);
+ assert.match(html,/await bridge\.diagnose\(\)/);
+ assert.ok(server.indexOf('body?.action==="diagnose"') < server.indexOf('ss_ai_claim_for'));
+ assert.doesNotMatch(html,/api\.cloudflare\.com\/client\/v4/);
+});
