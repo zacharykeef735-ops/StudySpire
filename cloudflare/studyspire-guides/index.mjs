@@ -5,7 +5,7 @@ import {STUDY_GUIDES} from '../../studyspire-guide-catalog.mjs';
 // Generated tutoring requires a Supabase-authenticated StudySpire account.
 const SUPABASE_URL='https://tcmlxpgomlfybgfdjeqj.supabase.co';
 const SUPABASE_PUBLIC_KEY='sb_publishable_oBcEtziurOtmQJ2fg5a9og_cLtXbyH9';
-const MODEL='@cf/meta/llama-3.1-8b-instruct-fp8';
+const MODEL='@cf/meta/llama-3.1-8b-instruct-fp8-fast';
 const POLICY=[
   'You are StudySpire, an encouraging, accurate tutor for secondary-school students.',
   'Teach concepts and problem-solving methods. Give a hint first for school assignments rather than a submission-ready answer.',
@@ -67,15 +67,24 @@ async function aiTutor(request, env) {
     const quota=await claim.json().catch(()=>null);
     if(!quota?.ok)return err(429,String(quota?.code||'DAILY_LIMIT'),
       quota?.code==='STUDENT_LIMIT'?'Your hosted questions are used up for today. Choose browser AI or wait.':'The shared hosted allowance is used up. Choose browser AI or wait.');
+    const stream=body.stream===true;
     let modelOutput;
     try{
       modelOutput=await env.AI.run(MODEL,{
-        messages:[{role:'system',content:POLICY},...turns.slice(-8)],
-        max_tokens:Math.min(450,Math.max(90,Number(body.maxTokens)||220)),
-        temperature:0.35
+        messages:[{role:'system',content:POLICY},...turns.slice(-6)],
+        max_tokens:Math.min(300,Math.max(90,Number(body.maxTokens)||190)),
+        temperature:0.3,
+        stream
       });
     }catch(_){
       return err(502,'PROVIDER_UNAVAILABLE','Cloudflare Workers AI is temporarily unavailable or over its free limit. Choose browser AI or wait.');
+    }
+    if(stream){
+      if(!modelOutput||typeof modelOutput.getReader!=='function')
+        return err(502,'STREAM_UNAVAILABLE','Cloudflare did not return a streaming tutor response.');
+      return new Response(modelOutput,{
+        headers:{...cors,'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no'}
+      });
     }
     const answer=modelOutput?.response;
     if(typeof answer!=='string'||!answer.trim())
