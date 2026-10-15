@@ -11,6 +11,14 @@ const SYSTEM_POLICY=[
  "Never fabricate facts, quotations or sources. Never request passwords or private identifying information.",
  "Keep the response helpful, age-appropriate, and concise. Avoid unnecessary personal information."
 ].join(" ");
+const WORKER_URL="https://studyspire.zacharykeef735.workers.dev";
+async function workerBindingReady(){
+ try{
+  const reply=await fetch(WORKER_URL+"/health",{signal:AbortSignal.timeout(4000)});
+  const health=reply.ok?await reply.json().catch(()=>null):null;
+  return health?.service==="studyspire-guides"&&health?.aiBound===true;
+ }catch(_){return false;}
+}
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors});
  if(req.method!=="POST")return fail(405,"METHOD","POST required.");
@@ -49,7 +57,9 @@ Deno.serve(async(req:Request)=>{
     const rows=profileLookup.ok?await profileLookup.json().catch(()=>[]):[];
     if(!Array.isArray(rows)||rows.length!==1||rows[0]?.username!=="zk5142")
       return fail(403,"FORBIDDEN","This diagnostic is restricted to the zk5142 account.");
-    if(!cfToken)return respond(200,{ok:true,ready:false,code:"TOKEN_MISSING",message:"Supabase has not provided CLOUDFLARE_AI_TOKEN to this function. Check the secret name and project, then save again."});
+    if(await workerBindingReady())
+      return respond(200,{ok:true,ready:true,code:"AI_BINDING_READY",message:"Cloudflare Workers AI binding is connected. No Supabase Cloudflare API token is required. Try asking your tutor a question."});
+    if(!cfToken)return respond(200,{ok:true,ready:false,code:"AI_BINDING_NOT_DEPLOYED",message:"Your free Cloudflare guide Worker works, but the Workers AI binding has not been deployed. No more API token changes are needed. Publish the Worker with its AI binding to enable hosted AI."});
     if(!cfAccount)return respond(200,{ok:true,ready:false,code:"ACCOUNT_ID_MISSING",message:"Supabase has not provided CLOUDFLARE_ACCOUNT_ID to this function. Check the secret name and project, then save again."});
     if(!cfAccountValid)return respond(200,{ok:true,ready:false,code:"ACCOUNT_ID_INVALID",message:"Cloudflare Account ID is not 32 hexadecimal characters. Copy the Account ID (not a Zone ID or account name) from Cloudflare."});
     try{
@@ -64,9 +74,6 @@ Deno.serve(async(req:Request)=>{
       return respond(200,{ok:true,ready:false,code:"TOKEN_CHECK_UNAVAILABLE",message:"Credentials are present, but Cloudflare token verification timed out. Try the diagnostic again later."});
     }
   }
-  if(!cfToken)return fail(503,"TOKEN_MISSING","CLOUDFLARE_AI_TOKEN is missing from Supabase Edge Function Secrets. Choose browser AI while the project administrator configures it.");
-  if(!cfAccount)return fail(503,"ACCOUNT_ID_MISSING","CLOUDFLARE_ACCOUNT_ID is missing from Supabase Edge Function Secrets.");
-  if(!cfAccountValid)return fail(503,"ACCOUNT_ID_INVALID","CLOUDFLARE_ACCOUNT_ID is not a valid Cloudflare Account ID. Copy the 32-character account ID, not the account name.");
   if(!body||!Array.isArray(body.messages)||body.messages.length>14)return fail(400,"BAD_REQUEST","Provide a recent conversation (up to 14 messages).");
   const turns:{role:"user"|"assistant";content:string}[]=[];
   for(const message of body.messages){
@@ -83,6 +90,25 @@ Deno.serve(async(req:Request)=>{
   if(!turns.length||turns[turns.length-1].role!=="user"||
      turns.some(m=>!m.content.trim())||turns.reduce((n,m)=>n+m.content.length,0)>9000)
    return fail(400,"BAD_REQUEST","Please enter a shorter study question.");
+  // First choice: Cloudflare Workers AI binding. It needs no Cloudflare token
+  // inside Supabase. The Worker independently authenticates the user's JWT
+  // and reserves usage via ss_ai_claim_mine; do NOT claim quota twice here.
+  if(await workerBindingReady()){
+    const workerReply=await fetch(WORKER_URL+"/v1/tutor",{
+      method:"POST",
+      headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+      body:JSON.stringify({messages:turns.slice(-8),maxTokens:Math.min(450,Math.max(90,Number(body.maxTokens)||220))}),
+      signal:AbortSignal.timeout(40000)
+    });
+    const workerResult=await workerReply.json().catch(()=>null);
+    if(workerResult&&typeof workerResult==="object")
+      return respond(workerReply.status,workerResult);
+    return fail(502,"WORKER_RESPONSE","Cloudflare Worker returned an invalid tutor response. Try browser AI.");
+  }
+  // Legacy token route remains an option for eligible deployments.
+  if(!cfToken)return fail(503,"AI_BINDING_NOT_DEPLOYED","Workers AI binding hasn't been deployed to Cloudflare yet. No Supabase API token is needed for the new integration. Browser AI is still free.");
+  if(!cfAccount)return fail(503,"ACCOUNT_ID_MISSING","CLOUDFLARE_ACCOUNT_ID is missing from Supabase Edge Function Secrets.");
+  if(!cfAccountValid)return fail(503,"ACCOUNT_ID_INVALID","CLOUDFLARE_ACCOUNT_ID is not a valid Cloudflare Account ID.");
   const claimed=await fetch(url+"/rest/v1/rpc/ss_ai_claim_for",{
    method:"POST",headers:{"apikey":service,"Authorization":"Bearer "+service,"Content-Type":"application/json"},
    body:JSON.stringify({for_profile:status.profile_id}),signal:AbortSignal.timeout(10000)
