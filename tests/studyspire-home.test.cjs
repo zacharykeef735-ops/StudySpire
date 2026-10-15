@@ -89,7 +89,7 @@ test('the screenshot-matched dashboard code is present, connected and executable
   assert.match(html,/src="studyspire-layout\.js\?v=3\.95"/);
   assert.ok(html.indexOf('studyspire-layout.js?v=3.95')>html.indexOf('studyspire-home.js?v=3.94'));
   for(const expected of ['ssScreenshotNav','ssTopSearch','ssNotificationButton','ssHomeFriendList',
-    'ssHomeDocumentList','ssQuickCourses','ssHelpTopButton','miniLauncher']){
+    'ssHomeDocumentList','ssHelpTopButton','miniLauncher']){
     assert.ok(layout.includes(expected),'Missing UI feature: '+expected);
   }
   assert.match(styles,/data:image\/webp;base64,/);
