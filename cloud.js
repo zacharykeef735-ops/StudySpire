@@ -429,6 +429,18 @@ window.StudySummitMessagingBridge={
 // AI provider tokens are held ONLY by the Supabase Edge Function.
 window.StudySpireHostedAI={
  available:()=>Boolean(ready&&client&&live&&person&&profile&&!banned(profile)),
+ // Authenticated, zero-neuron diagnostic. Never returns provider credentials.
+ diagnose:async()=>{
+  if(!window.StudySpireHostedAI.available())throw Error('Sign in to StudySpire Cloud first.');
+  const {data,error}=await client.functions.invoke('studyspire-tutor',{body:{action:'diagnose'}});
+  if(error){
+   let details=null;
+   try{details=await error.context?.json?.()}catch(_){}
+   throw Error(details?.message||error.message||'Could not test hosted AI configuration.');
+  }
+  if(!data?.ok)throw Error(data?.message||'Hosted AI diagnostic was unavailable.');
+  return data;
+ },
  quota:async()=>{
   if(!window.StudySpireHostedAI.available())throw Error('Sign in to StudySpire Cloud first.');
   const {data,error}=await client.rpc('ss_ai_status');
