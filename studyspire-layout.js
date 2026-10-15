@@ -327,8 +327,11 @@
   }
   function init(){
     if(!$('page-home'))return;
+    // Finish both dashboard DOM passes before displaying the app. The page
+    // starts with the boot class in HTML, so legacy layout never gets painted.
     refineHome();installSidebar();installTopbar();updateMini();
     document.body.classList.add('ss-screenshot-layout');
+    document.documentElement.classList.remove('ss-ui-boot');
     refreshOverview();refreshNotificationBadge();
     window.addEventListener('ss-suite-updated',()=>{refreshOverview();refreshNotificationBadge()});
     window.addEventListener('ss-cloud-auth-changed',()=>{friendLastFetch=0;refreshOverview()});
