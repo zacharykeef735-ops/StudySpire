@@ -102,6 +102,8 @@ export default {
     }
     if(url.pathname==='/v1/tutor'&&request.method==='POST')return aiTutor(request,env);
     if(url.pathname==='/v1/tutor')return err(405,'METHOD','POST required.');
+    if(['/health','/v1/topics','/v1/guide'].includes(url.pathname))
+      return err(405,'METHOD','GET required.');
     return json({error:'Not found'},404);
   }
 };
