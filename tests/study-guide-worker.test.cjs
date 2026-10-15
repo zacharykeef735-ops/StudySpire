@@ -48,7 +48,7 @@ test('StudySpire asks the study guide before hosted AI and sends only an approve
  const worker=read('cloudflare/studyspire-guides/index.mjs');
  const wrangler=read('wrangler.toml');
  assert.match(html,/studyspire-guide\.js\?v=1\.00/);
- assert.ok(html.indexOf('await publicGuide.getGuide(messages)')<html.indexOf('await hosted.ask(messages,maxTokens)'));
+ assert.ok(html.indexOf('await publicGuide.getGuide(messages)')<html.indexOf('await hosted.ask(messages,maxTokens,window.StudySpireTutorOnChunk)'));
  assert.match(html,/0 AI neurons/);
  assert.match(config,/guideWorkerUrl:\s*'(?:https:\/\/[a-z0-9.-]+\.workers\.dev)?'/);
  assert.match(browser,/userTurns\.length!==1/);
