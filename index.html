@@ -1055,7 +1055,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       </div>
       <div id="ssHostedTutorStatus" class="hint" style="margin:0 0 12px" role="status" aria-live="polite">Hosted tutoring is optional. A signed-in student can check their individual daily question allowance. Provider credits remain shared for the whole site.</div>
       <button id="ssHostedTutorQuota" type="button" class="btn secondary small" style="margin-bottom:12px">Check hosted question allowance</button>
-      <p class="hint" id="ssHostedTutorInfo">StudySpire keeps separate per-student usage counters, but the provider's free allowance is shared. If hosted AI is unavailable, the free browser tutor below still works.</p>
+      <p class="hint" id="ssHostedTutorInfo">StudySpire first checks 20 reviewed study guides (0 AI neurons). Other questions use the hosted tutor for signed-in students, with separate per-student limits and a shared provider allowance. If hosted AI is unavailable, you can choose free browser AI.</p>
       <div class="row">
         <button class="btn primary" id="loadLocalModel" type="button">⬇ Load browser AI</button>
         <button class="btn ghost" id="unloadLocalModel" type="button">Disconnect</button>
@@ -1327,6 +1327,16 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
   let generating = false;
   window.sendToAI = async function (messages, _credentials, maxTokens) {
     if (generating) throw new Error('The tutor is already responding. Please wait for it to finish.');
+    // A single, generic concept question can use a reviewed StudySpire guide.
+    // This costs ZERO Workers AI neurons and never sends student text to Workers.
+    const publicGuide=window.StudySpireStudyGuides;
+    if(publicGuide){
+      const result=await publicGuide.getGuide(messages);
+      if(result?.text){
+        window.StudySpireTutorLastProvider=result.provider;
+        return result.text;
+      }
+    }
     const hosted=window.StudySpireHostedAI;
     // Each signed-in student has a separate daily quota on the server.
     if(hosted?.available()){
@@ -1593,6 +1603,7 @@ window.StudySummitSafety={admin,state,status,review,report:userReport,mark,restr
 })();
 </script>
 <script src="suite.js?v=3.80"></script>
+<script type="module" src="studyspire-guide.js?v=1.00"></script>
 <div aria-label="StudySpire account" aria-modal="true" class="sd-auth-shade" id="sdAuthShade" role="dialog"><div class="sd-auth-box"><h2 class="sd-auth-brand"><img alt="" aria-hidden="true" src="studyspire-mark.svg"/> StudySpire</h2><p>Sign in to your learning profile, or create one on this device. Your lessons and progress stay separate from other profiles.</p><section aria-label="Switch local account" class="ss-switcher" id="ssSwitchArea">
 <div class="ss-switch-heading"><div><strong>Switch account</strong><p>Choose a profile, then enter its password.</p></div><span class="ss-current-profile" id="ssCurrentProfile">Guest</span></div>
 <div aria-label="Profiles saved in this browser" class="ss-switch-list" id="ssSwitchList" role="group"></div>
