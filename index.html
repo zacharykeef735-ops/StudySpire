@@ -1,11 +1,48 @@
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="en" class="ss-ui-boot">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <meta content="dark" name="color-scheme"/>
 <title>StudySpire | Academic AI</title>
+<style id="ss-ui-boot-style">
+html.ss-ui-boot { background:#081629; }
+html.ss-ui-boot body { background:#081629!important; }
+html.ss-ui-boot .app { visibility:hidden!important; }
+#ssBootScreen { display:none; }
+html.ss-ui-boot #ssBootScreen {
+ display:flex;position:fixed;inset:0;z-index:2147483647;
+ flex-direction:column;align-items:center;justify-content:center;gap:15px;
+ color:#edf4ff;background:#081629;
+ font:700 15px/1.45 Inter,ui-sans-serif,system-ui,sans-serif;
+}
+#ssBootScreen .ss-boot-icon {width:62px;height:62px;object-fit:contain}
+#ssBootScreen .ss-boot-progress {
+ width:138px;height:3px;border-radius:8px;background:#253f60;
+ overflow:hidden;position:relative;
+}
+#ssBootScreen .ss-boot-progress::after {
+ content:"";position:absolute;inset:0 auto 0 0;width:36%;
+ border-radius:8px;background:linear-gradient(90deg,#589dff,#a48dff);
+ animation:ss-boot-loading 1.5s ease-in-out infinite alternate;
+}
+@keyframes ss-boot-loading {from{transform:translateX(-25%)}to{transform:translateX(290%)}}
+@media(prefers-reduced-motion:reduce){#ssBootScreen .ss-boot-progress::after{animation:none;width:100%}}
+</style>
+<noscript><style>html.ss-ui-boot .app{visibility:visible!important}html.ss-ui-boot #ssBootScreen{display:none!important}</style></noscript>
+<script id="ss-boot-fallback">
+(function(){
+  const release=()=>document.documentElement.classList.remove('ss-ui-boot');
+  window.addEventListener('load',()=>{
+    // Fail open only if optional dashboard JavaScript did not mount.
+    setTimeout(()=>{if(document.documentElement.classList.contains('ss-ui-boot')){
+      console.warn('StudySpire dashboard initializer failed; using basic layout.');
+      release();
+    }},4500);
+  },{once:true});
+})();
+</script>
 <link rel="stylesheet" href="enhancements.css?v=3.84"/>
 <link rel="stylesheet" href="messaging.css?v=3.82"/>
 <style>
@@ -526,6 +563,11 @@ body{font-size:14px;line-height:1.55}
 <meta name="description" content="StudySpire Academic AI: a free study workspace with Mini, flashcards, notes, planning and friends."/>
 </head>
 <body>
+<div id="ssBootScreen" role="status" aria-label="Preparing StudySpire dashboard">
+  <img class="ss-boot-icon" src="studyspire-mark.svg" width="62" height="62" alt=""/>
+  <span>Opening StudySpire…</span>
+  <span class="ss-boot-progress" aria-hidden="true"></span>
+</div>
 <noscript><div style="position:sticky;top:0;z-index:99999;background:#4a2027;color:#fff;padding:14px 18px;font:600 14px/1.5 system-ui;border-bottom:2px solid #ff9da8">StudySpire needs JavaScript to make its buttons work. This looks like a preview or a browser with JavaScript disabled. Open this downloaded HTML file in Google Chrome (not the Files app preview), and allow JavaScript.</div></noscript>
 <div class="app"><div class="sd-mobile-bar"><button aria-expanded="false" aria-label="Open navigation menu" class="sd-mobile-menu" id="sdMobileMenu" type="button">☰</button><span class="sd-mobile-brand">✦ StudySpire</span><span class="sd-mobile-sub">ACADEMIC AI</span></div><div aria-hidden="true" class="sd-mobile-shade" id="sdMobileShade"></div>
 <aside class="sidebar">
@@ -610,7 +652,7 @@ body{font-size:14px;line-height:1.55}
 <div class="row" style="margin:12px 0;flex-wrap:wrap"><input class="field sd-flex" id="ssAdminSearch" type="search" placeholder="Search accounts, reports, or categories" aria-label="Search moderation"/><button class="btn secondary small" id="ssAdminExportAudit" type="button">Export action history</button></div>
 <div class="sd-suite-grid">
 <section class="card"><div class="cardhead"><div><div class="cardtitle">Flagged messages</div><div class="sub">New reports are saved locally. Review before taking further action.</div></div></div>
-<div class="cardbody"><div class="row" style="margin-bottom:12px"><select aria-label="Filter moderation reports" class="field sd-flex" id="ssAdminFilter"><option value="open">Open reports</option><option value="all">All reports</option><option value="reviewed">Reviewed reports</option></select><button class="btn secondary small" id="ssAdminRefresh" type="button">Refresh</button></div><div class="row" style="margin:10px 0;flex-wrap:wrap"><button class="btn secondary small" id="ssAdminExport" type="button">Export reports</button><button class="btn ghost small" id="ssAdminClearReviewed" type="button">Clear reviewed</button></div><div aria-live="polite" class="sd-agenda-list" id="ssAdminReports"></div></div></section>
+<div class="cardbody"><div class="row" style="margin-bottom:12px"><select aria-label="Filter moderation reports" class="field sd-flex" id="ssAdminFilter"><option value="open">Open reports</option><option value="all">All open reports</option></select><button class="btn secondary small" id="ssAdminRefresh" type="button">Refresh</button></div><div class="row" style="margin:10px 0;flex-wrap:wrap"><button class="btn secondary small" id="ssAdminExport" type="button">Export reports</button><button class="btn ghost small" id="ssAdminClearReviewed" type="button" hidden>Clear reviewed</button></div><div aria-live="polite" class="sd-agenda-list" id="ssAdminReports"></div></div></section>
 <section class="card"><div class="cardhead"><div><div class="cardtitle">Messaging access</div><div class="sub">Temporarily pause or restore local messaging for registered profiles.</div></div></div>
 <div class="cardbody"><div class="row" style="margin-bottom:12px"><label for="ssAdminAccountFilter" class="label">Accounts</label><select class="field" id="ssAdminAccountFilter" aria-label="Filter accounts by ban status" style="max-width:190px"><option value="all">All accounts</option><option value="banned">Banned only</option><option value="unbanned">Not banned</option></select></div><div id="ssAdminBanFeedback" class="hint" role="status" aria-live="polite" style="margin-bottom:10px">If an account was banned by mistake, select <b>Lift ban early</b> next to the account. This does not delete their study data.</div><div class="row" style="margin-bottom:12px"><label for="ssAdminDuration" class="label">Restriction length</label><select class="field" id="ssAdminDuration"><option value="1">1 hour</option><option value="24" selected>24 hours</option><option value="72">3 days</option><option value="168">7 days</option></select></div><div class="sd-agenda-list" id="ssAdminRestrictions"></div><div class="note" style="margin-top:14px">Messages are checked using local rules before sending. Flagged text is visible to the administrator of this browser. Guest profiles cannot send friend messages.</div></div></section>
 </div>
@@ -1624,9 +1666,9 @@ function report(text,opts={}){const from=opts.from||who()||'guest';const r={id:'
 function review(text,opts={}){const from=opts.from||who(),lock=status(from);if(lock)return {allowed:false,reason:lock};
  const flagged=inspect(text);if(!flagged)return {allowed:true};report(text,{...opts,from,...flagged,auto:true});return {allowed:false,reason:flagged.reason};}
 function userReport(text,from,to){if(!who())return {allowed:false,reason:'Sign in to report a message.'};report(text,{from,to,reporter:who(),category:'User report',severity:2});return {allowed:true}}
-function mark(id){if(!admin())return false;const items=read(KEYS.reports,[]),row=items.find(x=>x.id===id);if(!row)return false;row.status='reviewed';write(KEYS.reports,items);window.dispatchEvent(new Event('ss-local-moderation-changed'));return true}
+function mark(id){if(!admin())return false;const items=read(KEYS.reports,[]),row=items.find(x=>x.id===id&&x.status==='open');if(!row)return false;write(KEYS.reports,items.filter(x=>x.id!==id));window.dispatchEvent(new Event('ss-local-moderation-changed'));return true}
 function restrict(user,on,hours=24){if(!admin()||!user||user==='admin')return false;const bans=restrictions();const duration=Math.max(1,Math.min(168,Number(hours)||24));if(on)bans[user]={until:now()+duration*3600000,reason:'Admin review'};else delete bans[user];write(KEYS.restrictions,bans);window.dispatchEvent(new Event('ss-local-moderation-changed'));return true}
-function clearReviewed(){if(!admin())return false;write(KEYS.reports,read(KEYS.reports,[]).filter(r=>r.status!=='reviewed'));window.dispatchEvent(new Event('ss-local-moderation-changed'));return true}
+function clearReviewed(){if(!admin())return false;write(KEYS.reports,read(KEYS.reports,[]).filter(r=>r.status==='open'));window.dispatchEvent(new Event('ss-local-moderation-changed'));return true}
 window.StudySummitSafety={admin,state,status,review,report:userReport,mark,restrict,clearReviewed,inspect};
 })();
 </script>
@@ -2219,7 +2261,7 @@ function renderAccess(){const a=lab.access||{};$('ssLabLarge').checked=!!a.large
 function renderRoles(){const role=currentRole(),shown=role==='owner'||role==='moderator'||role==='admin';$('ssLabRolesTab').hidden=!shown;if(!shown)return;const box=$('ssLabRoleArea');box.replaceChildren();if(role==='owner'){
  const profiles=read(ACCOUNTS,{}),roleMap=read(ROLES,{});for(const user of Object.keys(profiles).filter(u=>u!=='admin').sort()){const row=document.createElement('div');row.className='ss-lab-row';row.style.padding='8px 0';const name=document.createElement('strong');name.textContent='@'+user;name.style.minWidth='100px';const select=document.createElement('select');select.className='field';select.style.maxWidth='185px';for(const k of ['student','moderator','admin'])select.add(new Option(k[0].toUpperCase()+k.slice(1),k));select.value=roleMap[user]||'student';select.setAttribute('aria-label','Role for '+user);select.onchange=()=>{const roles=read(ROLES,{});roles[user]=select.value;put(ROLES,roles);const rows=read('ss-summit-admin-actions-v1',[]);rows.unshift({at:Date.now(),action:'Changed local role',subject:user,details:select.value});put('ss-summit-admin-actions-v1',rows.slice(0,300));$('ssLabRoleStatus').textContent='Role saved. The account must sign in again to update its controls.'};row.append(name,select);box.append(row)}if(!Object.keys(profiles).filter(u=>u!=='admin').length)box.textContent='No student accounts found in this browser.';
  }else if(role==='moderator'){
- const reports=read('ss-summit-mod-v361-reports',[]),open=reports.filter(r=>r.status==='open').slice(0,30);const hdr=document.createElement('p');hdr.textContent=`${open.length} open reports in this browser. Moderators can mark reports reviewed, but cannot ban users.`;box.append(hdr);for(const r of open){const item=document.createElement('div');item.className='ss-lab-card';item.style.margin='8px 0';const desc=document.createElement('p');desc.textContent=`${r.category||'Report'} · ${r.from||'Unknown'} · ${(r.detail||'').slice(0,500)}`;const btn=document.createElement('button');btn.className='btn secondary small';btn.textContent='Mark reviewed';btn.onclick=()=>{if(currentRole()!=='moderator')return;const all=read('ss-summit-mod-v361-reports',[]);const found=all.find(x=>x.id===r.id);if(found){found.status='reviewed';put('ss-summit-mod-v361-reports',all);put('ss-summit-admin-actions-v1',[{at:Date.now(),action:'Moderator reviewed report',subject:r.id,details:account()},...read('ss-summit-admin-actions-v1',[])].slice(0,300));renderRoles()}};item.append(desc,btn);box.append(item)}
+ const reports=read('ss-summit-mod-v361-reports',[]),open=reports.filter(r=>r.status==='open').slice(0,30);const hdr=document.createElement('p');hdr.textContent=`${open.length} open reports in this browser. Moderators can mark reports reviewed, but cannot ban users.`;box.append(hdr);for(const r of open){const item=document.createElement('div');item.className='ss-lab-card';item.style.margin='8px 0';const desc=document.createElement('p');desc.textContent=`${r.category||'Report'} · ${r.from||'Unknown'} · ${(r.detail||'').slice(0,500)}`;const btn=document.createElement('button');btn.className='btn secondary small';btn.textContent='Mark reviewed';btn.onclick=()=>{if(currentRole()!=='moderator')return;const all=read('ss-summit-mod-v361-reports',[]);const found=all.find(x=>x.id===r.id);if(found&&found.status==='open'){put('ss-summit-mod-v361-reports',all.filter(x=>x.id!==r.id));put('ss-summit-admin-actions-v1',[{at:Date.now(),action:'Moderator reviewed report',subject:r.id,details:account()},...read('ss-summit-admin-actions-v1',[])].slice(0,300));renderRoles()}};item.append(desc,btn);box.append(item)}
  }else{box.textContent='Your Admin role can use Admin moderation in the sidebar. The owner account manages role assignments.'}}
 // Reuse safety admin check to recognize designated local admins; moderator actions stay limited to report-review above.
 const safety=window.StudySummitSafety;if(safety){const original=safety.admin;safety.admin=()=>original()||(currentRole()==='admin'&&account()!==''&&!!read(ACCOUNTS,{})[account()]);window.dispatchEvent(new Event('ss-local-moderation-changed'));}
