@@ -125,3 +125,22 @@ test('hosted AI supports zero-secret Workers AI binding',()=>{
  assert.ok(server.indexOf('if(await workerBindingReady())')<server.indexOf('rpc/ss_ai_claim_for'));
  assert.match(server,/AI_BINDING_NOT_DEPLOYED/);
 });
+
+test('plain Tutor questions are serialized as text, not image-part arrays',()=>{
+ const vm=require('node:vm');
+ const begin=html.indexOf('function currentMessages(body)');
+ const end=html.indexOf('async function sendToAI()',begin);
+ assert.ok(begin>=0 && end>begin,'Current question builder must exist');
+ const sandbox={};
+ vm.runInNewContext(html.slice(begin,end)+'; this.buildTutorMessage=currentMessages;',sandbox);
+ const simple=sandbox.buildTutorMessage({kind:'question',prompt:'3x+7',context:'',style:'steps'});
+ assert.equal(simple.length,2);
+ assert.equal(simple[1].role,'user');
+ assert.equal(typeof simple[1].content,'string');
+ assert.match(simple[1].content,/3x\\+7/);
+ assert.match(simple[1].content,/Teach me|step|process/i);
+ const withImage=sandbox.buildTutorMessage({kind:'question',prompt:'Explain this',context:'',style:'hint',imageDataUrl:'data:image/png;base64,test'});
+ assert.equal(Array.isArray(withImage[1].content),true);
+ assert.equal(withImage[1].content[0].type,'text');
+ assert.equal(withImage[1].content[1].type,'image_url');
+});
