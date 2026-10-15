@@ -640,7 +640,7 @@ async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=
  const [users,reports,audit,chatFlags]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([]),rpc('ss_staff_chat_flags')]);
  staffData={users,reports,audit};const summary=$('ssCloudAdminSummary');if(summary){summary.replaceChildren();
  const overview=role==='moderator'
-   ? [[reports.filter(r=>r.status==='open').length,'Open reports'],[chatFlags.length,'Blocked attempts']]
+   ? [[reports.filter(r=>r.status==='open').length,'Open reports'],[Array.isArray(chatFlags)?chatFlags.length:0,'Blocked attempts']]
    : role==='admin'
    ? [[users.length,'Managed accounts'],[reports.filter(r=>r.status==='open').length,'Open reports'],[users.filter(u=>u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())).length,'Active bans']]
    : [[users.length,'Accounts'],[users.filter(u=>u.role==='owner').length,'Owners'],[reports.filter(r=>r.status==='open').length,'Open reports'],[users.filter(u=>u.banned&&(!u.banned_until||Date.parse(u.banned_until)>Date.now())).length,'Active bans'],[users.filter(u=>u.role!=='student').length,'Staff']];
