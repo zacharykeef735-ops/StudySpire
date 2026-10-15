@@ -50,7 +50,7 @@ test('StudySpire asks the study guide before hosted AI and sends only an approve
  assert.match(html,/studyspire-guide\.js\?v=1\.00/);
  assert.ok(html.indexOf('await publicGuide.getGuide(messages)')<html.indexOf('await hosted.ask(messages,maxTokens)'));
  assert.match(html,/0 AI neurons/);
- assert.match(config,/guideWorkerUrl: ''/);
+ assert.match(config,/guideWorkerUrl:\s*'(?:https:\/\/[a-z0-9.-]+\.workers\.dev)?'/);
  assert.match(browser,/userTurns\.length!==1/);
  assert.match(browser,/url\.searchParams\.set\('topic',topic\)/);
  assert.match(browser,/credentials:'omit'/);
