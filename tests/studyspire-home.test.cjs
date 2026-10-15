@@ -25,7 +25,7 @@ test('StudySpire branding and Academic AI appear on the actual site',()=>{
 
 test('home scripts load after existing features and tool navigation is complete',()=>{
   assert.doesNotThrow(()=>new Function(js));
-  const scripts=['suite.js?v=3.80','cloud.js?v=4.03','enhancements.js?v=3.80',
+  const scripts=['suite.js?v=3.80','cloud.js?v=4.03','enhancements.js?v=3.81',
     'messaging.js?v=3.92','help-guide.js?v=3.94','studyspire-home.js?v=3.94'];
   const positions=scripts.map(s=>html.indexOf('src="'+s+'"'));
   assert.ok(positions.every(p=>p>0));
@@ -87,7 +87,7 @@ test('the screenshot-matched dashboard code is present, connected and executable
   assert.doesNotThrow(()=>new Function(layout));
   assert.match(html,/href="studyspire-layout\.css\?v=3\.94"/);
   assert.match(html,/src="studyspire-layout\.js\?v=3\.94"/);
-  assert.ok(html.indexOf('studyspire-layout.js?v=3.94')>html.indexOf('studyspire-home.js?v=3.94'));
+  assert.ok(html.indexOf('studyspire-layout.js?v=3.95')>html.indexOf('studyspire-home.js?v=3.94'));
   for(const expected of ['ssScreenshotNav','ssTopSearch','ssNotificationButton','ssHomeFriendList',
     'ssHomeDocumentList','ssQuickCourses','ssHelpTopButton','miniLauncher']){
     assert.ok(layout.includes(expected),'Missing UI feature: '+expected);

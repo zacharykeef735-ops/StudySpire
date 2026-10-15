@@ -13,7 +13,7 @@ const messaging=read('messaging.js'),layout=read('studyspire-layout.js'),html=re
 test('new profile picture assets load after account, messaging, and layout code',()=>{
   assert.match(html,/href="avatars\.css\?v=3\.92"/);
   assert.match(html,/src="avatars\.js\?v=3\.92"/);
-  assert.ok(html.indexOf('src="avatars.js?v=3.92"')>html.indexOf('src="studyspire-layout.js?v=3.94"'));
+  assert.ok(html.indexOf('src="avatars.js?v=3.92"')>html.indexOf('src="studyspire-layout.js?v=3.95"'));
   assert.doesNotThrow(()=>new Function(avatars));
   assert.doesNotThrow(()=>new Function(cloud));
   assert.doesNotThrow(()=>new Function(messaging));
