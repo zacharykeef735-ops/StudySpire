@@ -73,7 +73,7 @@ test('Workers AI binding verifies authentication and independent quotas',async()
  let runs=0;
  const fakeAI={async run(model,options){
    runs++;
-   assert.equal(model,'@cf/meta/llama-3.1-8b-instruct-fp8');
+   assert.equal(model,'@cf/meta/llama-3.1-8b-instruct-fp8-fast');
    assert.match(options.messages[0].content,/hint first/);
    return {response:'Try isolating the variable. What operation would you undo?'};
  }};
