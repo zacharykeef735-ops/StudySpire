@@ -474,3 +474,24 @@ An authorized operator can activate the deployed endpoint by setting **Supabase 
 Never paste an AI provider token in the StudySpire client or GitHub. If these secrets are missing, the endpoint responds with `NOT_CONFIGURED` and the website offers free WebGPU setup instead. Published Cloudflare free allowance is measured in *neurons*, not fixed daily question counts, so actual provider capacity depends on tokens/model costs.
 
 Implementation: `supabase/functions/studyspire-tutor/index.ts` is the deployed server code, and `studyspire-ai-quota-migration.sql` contains the quota schema and RPCs. Quotas require a canonical active StudySpire profile, not merely a username supplied by the browser.
+
+
+## Zero-neuron public study guides via Cloudflare Workers (optional)
+
+StudySpire has a **reviewed catalog of 20 common learning concepts**: photosynthesis, mitosis, fractions, linear equations, essay thesis statements, and more. Questions matching a **standalone general concept** are served from that catalog *before* using hosted AI. The response gives explanations, a distinct worked-thinking example, and a follow-up question rather than a personalized assignment answer.
+
+This does **not** use Workers AI or consume any AI neurons. Cloudflare Workers' free allowance of 100,000 requests per day can serve these public guides once the Worker is deployed. The **10,000-neurons-per-day** Workers AI allowance is separate. The existing 60-questions-per-student and 400-total hosted-AI quota still apply **only to generated hosted AI responses**.
+
+### Deploying the optional public Worker
+
+The Worker source is `cloudflare/studyspire-guides/index.mjs`, the shared reviewed catalog is `studyspire-guide-catalog.mjs`, and `wrangler.toml` contains the deployment settings. An **eligible Cloudflare account administrator** can deploy this from the repository root using the supported Wrangler CLI (`npx wrangler deploy`) and the account's approved deployment workflow. This Worker needs **no AI token, account identifiers, KV, D1, database, or other paid bindings**.
+
+Once deployed, the administrator can edit **only the public URL** in `cloud-config.js`:
+
+```js
+guideWorkerUrl: 'https://studyspire-guides.YOUR-WORKERS-SUBDOMAIN.workers.dev'
+```
+
+Do not add secret API keys to `cloud-config.js`. The `/health`, `/v1/topics`, and `/v1/guide?topic=photosynthesis` paths provide public, read-only content. No student prompt, message history, credential, or account identifier is sent to this Worker: the frontend extracts an exact recognized **public topic slug** first. If the Worker is not deployed or unreachable, the same reviewed guide is served from the browser at **zero API cost**. Questions outside the narrow guide catalog go to the normal tutor, retaining the explicit browser-AI choice when hosted AI cannot answer.
+
+Authenticated student quotas are **deliberately kept in Supabase**, not in this public Worker, to prevent exposing student account data or making a public quota-bypass endpoint. Deployment is not automatic and requires the Cloudflare account operator; the current repository includes the full source code and no third-party account credentials.
