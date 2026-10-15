@@ -1338,9 +1338,12 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       }catch(error){
         if(!localEngine){
           showFreeTutorSetup();
-          throw new Error((error?.message||'Hosted AI is unavailable')+' You can download the free browser tutor instead.');
+          throw new Error((error?.message||'Hosted AI is unavailable')+' Choose whether to download browser AI or wait.');
         }
-        console.warn('Hosted AI unavailable; using the downloaded browser tutor.');
+        // Never silently switch to an already downloaded model: ask the student.
+        if(!window.confirm('Hosted AI is unavailable or its daily limit is reached. Use your downloaded browser tutor for this question? Select Cancel to wait and retry hosted AI later.')){
+          throw new Error('Hosted AI is unavailable. You chose to wait and try again later.');
+        }
       }finally{generating=false}
     }
     if (!localEngine) {
