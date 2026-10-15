@@ -39,7 +39,7 @@ test('server validates JWT and canonical profile before its privileged quota cla
 test('hosted backend handles provider configuration securely and teaches first',()=>{
  assert.match(server,/Deno\.env\.get\("CLOUDFLARE_AI_TOKEN"\)/);
  assert.match(server,/Deno\.env\.get\("CLOUDFLARE_ACCOUNT_ID"\)/);
- assert.match(server,/TOKEN_MISSING/);
+ assert.match(server,/AI_BINDING_NOT_DEPLOYED/);
  assert.match(server,/TEXT_ONLY/);
  assert.match(server,/submission-ready answer/);
  assert.match(server,/const model="@cf\/meta\/llama-3\.1-8b-instruct-fp8"/);
@@ -57,7 +57,7 @@ test('a hosted AI failure requires student consent before switching to installed
 test('Cloudflare diagnostics disclose no credentials and do not consume questions',()=>{
  assert.match(server,/body\?\.action==="diagnose"/);
  assert.match(server,/api\.cloudflare\.com\/client\/v4\/user\/tokens\/verify/);
- assert.match(server,/TOKEN_MISSING/);
+ assert.match(server,/AI_BINDING_NOT_DEPLOYED/);
  assert.match(server,/ACCOUNT_ID_MISSING/);
  assert.match(server,/ACCOUNT_ID_INVALID/);
  assert.match(server,/TOKEN_INVALID/);
@@ -115,4 +115,13 @@ test('diagnostic requires verified zk5142 account in backend and UI',()=>{
  assert.match(html,/#ssTutorQuickConnectionTest\[hidden\],#ssHostedTutorTest\[hidden\]/);
  assert.match(html,/id="ssTutorQuickConnectionTest"[^>]*hidden/);
  assert.match(html,/id="ssHostedTutorTest"[^>]*hidden/);
+});
+
+test('hosted AI supports zero-secret Workers AI binding',()=>{
+ assert.match(server,/WORKER_URL="https:\/\/studyspire\.zacharykeef735\.workers\.dev"/);
+ assert.match(server,/async function workerBindingReady/);
+ assert.match(server,/AI_BINDING_READY/);
+ assert.match(server,/WORKER_URL\+"\/v1\/tutor"/);
+ assert.ok(server.indexOf('if(await workerBindingReady())')<server.indexOf('rpc/ss_ai_claim_for'));
+ assert.match(server,/AI_BINDING_NOT_DEPLOYED/);
 });
