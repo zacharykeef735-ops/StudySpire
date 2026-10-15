@@ -429,9 +429,12 @@ window.StudySummitMessagingBridge={
 // AI provider tokens are held ONLY by the Supabase Edge Function.
 window.StudySpireHostedAI={
  available:()=>Boolean(ready&&client&&live&&person&&profile&&!banned(profile)),
+ // Only the verified Cloud profile with this exact username may run diagnostics.
+ // Supabase Edge Functions independently enforce the same authorization.
+ canDiagnose:()=>Boolean(ready&&client&&live&&person&&profile&&!banned(profile)&&profile.username==='zk5142'),
  // Authenticated, zero-neuron diagnostic. Never returns provider credentials.
  diagnose:async()=>{
-  if(!window.StudySpireHostedAI.available())throw Error('Sign in to StudySpire Cloud first.');
+  if(!window.StudySpireHostedAI.canDiagnose())throw Error('Only the zk5142 account can test hosted AI settings.');
   const {data,error}=await client.functions.invoke('studyspire-tutor',{body:{action:'diagnose'}});
   if(error){
    let details=null;

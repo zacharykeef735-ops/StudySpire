@@ -39,9 +39,16 @@ Deno.serve(async(req:Request)=>{
   const cfAccountValid=/^[a-f0-9]{32}$/i.test(cfAccount);
   if(Number(req.headers.get("content-length")||0)>15000)return fail(413,"TOO_LARGE","Please shorten your question.");
   const body=await req.json().catch(()=>null);
-  // A zero-neuron, authenticated diagnostic; never returns secret text.
-  // This endpoint validates only credentials and does not reserve AI quota.
+  // A zero-neuron diagnostic, restricted to the canonical Cloud account
+  // 'zk5142'. User-supplied profile IDs or usernames are never trusted.
   if(body?.action==="diagnose"){
+    const profileLookup=await fetch(url+"/rest/v1/ss_profiles?select=username&id=eq."+encodeURIComponent(status.profile_id),{
+      headers:{"apikey":service,"Authorization":"Bearer "+service},
+      signal:AbortSignal.timeout(10000)
+    });
+    const rows=profileLookup.ok?await profileLookup.json().catch(()=>[]):[];
+    if(!Array.isArray(rows)||rows.length!==1||rows[0]?.username!=="zk5142")
+      return fail(403,"FORBIDDEN","This diagnostic is restricted to the zk5142 account.");
     if(!cfToken)return respond(200,{ok:true,ready:false,code:"TOKEN_MISSING",message:"Supabase has not provided CLOUDFLARE_AI_TOKEN to this function. Check the secret name and project, then save again."});
     if(!cfAccount)return respond(200,{ok:true,ready:false,code:"ACCOUNT_ID_MISSING",message:"Supabase has not provided CLOUDFLARE_ACCOUNT_ID to this function. Check the secret name and project, then save again."});
     if(!cfAccountValid)return respond(200,{ok:true,ready:false,code:"ACCOUNT_ID_INVALID",message:"Cloudflare Account ID is not 32 hexadecimal characters. Copy the Account ID (not a Zone ID or account name) from Cloudflare."});

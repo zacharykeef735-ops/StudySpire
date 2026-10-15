@@ -558,7 +558,7 @@ body{font-size:14px;line-height:1.55}
 <label class="upload" for="questionFile"><div class="uploadicon">▧</div><div><b>Add a worksheet picture</b><span>Upload a screenshot or photo (PNG, JPG, WebP).</span></div><input accept="image/*" id="questionFile" type="file"/></label>
 <div class="preview" id="questionPreview"><img alt="Worksheet preview" id="previewImg"/><div class="previewname" id="previewName"></div><button class="btn ghost small" id="removeAttachment">Remove</button></div>
 <div class="formgrid" style="margin-top:15px"><div class="fieldgroup"><label class="label" for="answerStyle">Explanation style</label><select id="answerStyle"><option value="steps">Teach me step by step</option><option value="hint">Hint first</option><option value="concise">Quick explanation</option><option value="check">Check my work</option></select></div><div class="fieldgroup"><label class="label" for="extraContext">Extra details (optional)</label><input class="field" id="extraContext" placeholder="What you tried, or teacher instructions"/></div></div>
-<div class="row" style="flex-wrap:wrap;gap:9px"><button class="btn primary" id="askBtn">✦ Explain and guide me</button><button class="btn ghost" id="clearQuestion">Clear</button><button class="btn secondary small" id="ssTutorQuickConnectionTest" type="button" aria-describedby="ssTutorQuickConnectionStatus">⚙ Test AI connection</button></div><div aria-live="polite" class="status" id="ssTutorQuickConnectionStatus" role="status"></div><div aria-live="polite" class="status" id="askStatus" role="status"></div>
+<div class="row" style="flex-wrap:wrap;gap:9px"><button class="btn primary" id="askBtn">✦ Explain and guide me</button><button class="btn ghost" id="clearQuestion">Clear</button><button class="btn secondary small" id="ssTutorQuickConnectionTest" type="button" hidden aria-describedby="ssTutorQuickConnectionStatus">⚙ Test AI connection</button></div><div aria-live="polite" class="status" id="ssTutorQuickConnectionStatus" role="status"></div><div aria-live="polite" class="status" id="askStatus" role="status"></div>
 </div></section>
 <section class="card"><div class="cardhead"><div><div class="cardtitle">Tutor explanation</div><div class="sub">Learn the method, then try the next step yourself.</div></div></div><div class="empty" id="answerEmpty"><div class="emptyicon">✧</div><b>Your explanation will appear here</b><p>Load browser AI in Settings for concepts, hints, and guided practice without giving away final homework answers.</p></div><div class="hidden" id="answerPanel"><div class="responsehead"><span>STUDY SUMMIT TUTOR</span><span class="tag" id="answerTag">Guided explanation</span></div><div class="response responsebody" id="answerOutput"></div><div class="cardbody" style="padding-top:0"><div class="row"><button class="btn secondary small" id="copyAnswer">Copy explanation</button><button class="btn secondary small" id="saveAnswer">Save explanation</button><button class="btn secondary small" id="ssNextHint" type="button">↗ Next hint</button><button class="btn secondary small" id="ssSimilarExample" type="button">◎ Similar example</button><button class="btn ghost small" id="followUpBtn">Ask a follow-up</button></div></div></div></section>
 </div>
@@ -929,6 +929,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
 #localModelStatus.warn{border-color:#65502d;background:#272012;color:#f5d69d}
 #localModelStatus.bad{border-color:#68323a;background:#2a151a;color:#ffb5bc}
 #localAiPanel{margin-bottom:14px} #localModelChoice{min-width:0} #modelDetailHint{margin-top:7px}
+#ssTutorQuickConnectionTest[hidden],#ssHostedTutorTest[hidden]{display:none!important}
 .ss-free-ai-overlay[hidden]{display:none!important}
 .ss-free-ai-overlay{position:fixed;inset:0;z-index:100100;background:rgba(7,12,24,.83);display:grid;place-items:center;padding:16px}
 .ss-free-ai-dialog{width:min(100%,470px);max-height:calc(100vh - 32px);overflow:auto;border:1px solid #6c76a9;background:#19253b;color:#f4f7ff;border-radius:20px;padding:23px;box-shadow:0 20px 64px #0009}
@@ -1056,7 +1057,7 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       <div id="ssHostedTutorStatus" class="hint" style="margin:0 0 12px" role="status" aria-live="polite">Hosted tutoring is optional. A signed-in student can check their individual daily question allowance. Provider credits remain shared for the whole site.</div>
       <div class="row" style="gap:9px;flex-wrap:wrap;margin-bottom:12px">
         <button id="ssHostedTutorQuota" type="button" class="btn secondary small">Check question allowance</button>
-        <button id="ssHostedTutorTest" type="button" class="btn secondary small">Test hosted AI connection</button>
+        <button id="ssHostedTutorTest" type="button" class="btn secondary small" hidden>Test hosted AI connection</button>
       </div>
       <p class="hint" id="ssHostedTutorInfo">StudySpire first checks 20 reviewed study guides (0 AI neurons). Other questions use the hosted tutor for signed-in students, with separate per-student limits and a shared provider allowance. If hosted AI is unavailable, you can choose free browser AI.</p>
       <div class="row">
@@ -1081,6 +1082,10 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       const output=el('ssHostedTutorStatus');
       const button=el('ssHostedTutorTest');
       const bridge=window.StudySpireHostedAI;
+      if(!bridge?.canDiagnose?.()){
+        output.textContent='Only the zk5142 account can test hosted AI configuration.';
+        return;
+      }
       if(!bridge?.available()){
         output.textContent='Sign in to StudySpire Cloud to test the hosted AI connection.';
         return;
@@ -2240,11 +2245,23 @@ renderEverything();
   const button=document.getElementById('ssTutorQuickConnectionTest');
   const output=document.getElementById('ssTutorQuickConnectionStatus');
   if(!button||!output)return;
+  function syncDiagnosticVisibility(){
+    const permitted=window.StudySpireHostedAI?.canDiagnose?.()===true;
+    button.hidden=!permitted;
+    const settingsButton=document.getElementById('ssHostedTutorTest');
+    if(settingsButton)settingsButton.hidden=!permitted;
+    if(!permitted){
+      output.textContent='';
+      output.className='status';
+    }
+  }
+  window.addEventListener('ss-cloud-auth-changed',syncDiagnosticVisibility);
+  syncDiagnosticVisibility();
   button.addEventListener('click',async function(){
     const bridge=window.StudySpireHostedAI;
-    if(!bridge?.available()){
-      output.className='status show info';
-      output.textContent='Sign in to a StudySpire Cloud account, then click Test AI connection again.';
+    if(!bridge?.canDiagnose?.()){
+      output.className='status';
+      output.textContent='';
       return;
     }
     button.disabled=true;
