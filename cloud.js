@@ -450,10 +450,77 @@ window.StudySpireHostedAI={
   if(error)throw Error(error.message);
   return data;
  },
- ask:async(messages,maxTokens)=>{
+ ask:async(messages,maxTokens,onChunk)=>{
   if(!window.StudySpireHostedAI.available())throw Error('Sign in to StudySpire Cloud first.');
+  // Direct Worker access removes a Supabase Edge Function hop and a per-request
+  // Worker health probe. The Worker independently verifies JWT and reserves quota.
+  const workerRoot=String(window.STUDY_SUMMIT_CLOUD?.guideWorkerUrl||'').trim().replace(/\\/g,'').replace(/\/$/,'');
+  let trustedWorker=false;
+  try{const url=new URL(workerRoot);trustedWorker=url.protocol==='https:'&&url.hostname==='studyspire.zacharykeef735.workers.dev'&&!url.username&&!url.password&&!url.search&&!url.hash;}catch(_){}
+  if(trustedWorker){
+    const {data:sessionData,error:sessionError}=await client.auth.getSession();
+    const accessToken=sessionData?.session?.access_token;
+    if(sessionError||!accessToken)throw Error('Cloud session expired. Sign in again.');
+    const response=await fetch(workerRoot+'/v1/tutor',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},
+      body:JSON.stringify({messages,maxTokens:Math.min(300,Math.max(90,Number(maxTokens)||190)),stream:true}),
+      credentials:'omit',
+      referrerPolicy:'no-referrer',
+      signal:AbortSignal.timeout(50000)
+    });
+    const issueFrom=(details,status)=>{
+      const error=new Error(details?.message||'Hosted tutor unavailable.');
+      error.code=details?.code||('HTTP_'+status);
+      return error;
+    };
+    if(!response.ok){
+      const details=await response.json().catch(()=>null);
+      throw issueFrom(details,response.status);
+    }
+    if(!String(response.headers.get('content-type')||'').includes('text/event-stream')){
+      const payload=await response.json().catch(()=>null);
+      if(!payload?.ok||typeof payload.answer!=='string')throw issueFrom(payload,response.status);
+      return payload.answer;
+    }
+    if(!response.body)throw Error('Your browser cannot read streaming AI responses.');
+    const reader=response.body.getReader();
+    const decode=new TextDecoder();
+    let buffer='',answer='';
+    function acceptLine(line){
+      if(!line.startsWith('data:'))return;
+      const raw=line.slice(5).trim();
+      if(!raw||raw==='[DONE]')return;
+      let event;
+      try{event=JSON.parse(raw)}catch(_){return}
+      if(event?.error)throw Error('The model stopped unexpectedly. Please try again.');
+      const piece=event?.response??event?.choices?.[0]?.delta?.content;
+      if(typeof piece!=='string'||!piece)return;
+      // Most Cloudflare SSE response chunks contain token deltas.
+      // Also support providers sending the accumulating text.
+      answer=piece.startsWith(answer)&&answer.length>0?piece:answer+piece;
+      if(answer.length>10000)throw Error('Tutor response was unexpectedly long.');
+      if(typeof onChunk==='function')onChunk(answer);
+    }
+    try{
+      while(true){
+        const {value,done}=await reader.read();
+        if(done)break;
+        buffer+=decode.decode(value,{stream:true});
+        if(buffer.length>14000)throw Error('Invalid streaming response.');
+        const lines=buffer.split(/\r?\n/);
+        buffer=lines.pop()||'';
+        for(const line of lines)acceptLine(line);
+      }
+      buffer+=decode.decode();
+      if(buffer.trim())acceptLine(buffer);
+    }finally{reader.releaseLock()}
+    if(!answer.trim())throw Error('Cloudflare returned an empty tutor response.');
+    return answer.trim();
+  }
+  // Legacy fallback for installations without the direct Cloudflare Worker URL.
   const {data,error}=await client.functions.invoke('studyspire-tutor',{
-   body:{messages,maxTokens:Math.min(450,Math.max(90,Number(maxTokens)||220))}
+   body:{messages,maxTokens:Math.min(300,Math.max(90,Number(maxTokens)||190))}
   });
   if(error){
    let details=null;
