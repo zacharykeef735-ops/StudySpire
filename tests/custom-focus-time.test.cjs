@@ -41,7 +41,7 @@ test('quick focus accepts valid custom minutes and rejects invalid durations',()
  elements.ssupCustomMinutes.value='60';api.resetTimer();
  assert.equal(elements.ssupCustomMinutes['aria-invalid'],undefined);
  assert.equal(elements.ssupClock.textContent,'60:00');
- assert.equal(elements.ssupHomeFocusOpen.querySelector().textContent,'60:00');
+ assert.equal(elements.ssHomeFocusOpen.querySelector().textContent,'60:00');
 });
 test('saved duration is restored and controls lock while timer is running',()=>{
  const {api,elements}=harness('95');

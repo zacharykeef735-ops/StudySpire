@@ -28,7 +28,7 @@ test('server validates JWT and canonical profile before its privileged quota cla
  assert.match(server,/rpc\/ss_ai_claim_for/);
  assert.ok(server.indexOf('rpc/ss_ai_status')<server.indexOf('rpc/ss_ai_claim_for'));
  assert.match(server,/STUDENT_LIMIT/);
- assert.match(server,/SITE_LIMIT/);
+ assert.match(migration,/SITE_LIMIT/);
  assert.match(migration,/primary key\(profile_id,usage_day\)/);
  assert.match(migration,/grant execute on function public\.ss_ai_claim_for\(uuid\) to service_role/);
  assert.match(migration,/revoke all on function public\.ss_ai_claim_for\(uuid\) from public,anon,authenticated/);

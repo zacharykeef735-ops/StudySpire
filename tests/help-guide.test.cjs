@@ -58,7 +58,7 @@ test('README contains a full, clearly delimited in-app guide',()=>{
 test('Help UI loads on every page without changing the existing dashboard',()=>{
   assert.doesNotThrow(()=>new Function(guideCode));
   assert.match(html,/help-guide\.js\?v=3\.94/);
-  assert.match(html,/enhancements\.css\?v=3\.83/);
+  assert.match(html,/enhancements\.css\?v=3\.84/);
   assert.match(css,/#ssHelpTopButton/);
   assert.match(css,/#ssHelpOverlay\[hidden\]/);
   assert.match(guideCode,/aria-modal="true"/);
