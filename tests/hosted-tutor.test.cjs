@@ -69,3 +69,28 @@ test('Cloudflare diagnostics disclose no credentials and do not consume question
  assert.ok(server.indexOf('body?.action==="diagnose"') < server.indexOf('ss_ai_claim_for'));
  assert.doesNotMatch(html,/api\.cloudflare\.com\/client\/v4/);
 });
+
+test('Tutor displays a permanent connection test beside Explain and guide me',async()=>{
+ const vm=require('node:vm');
+ assert.match(html,/id="askBtn"[^>]*>✦ Explain and guide me<\/button>[\s\S]{0,350}id="ssTutorQuickConnectionTest"/);
+ assert.match(html,/id="ssTutorQuickConnectionStatus" role="status"/);
+ const block=html.match(/<script id="ss-tutor-connection-test">([\s\S]*?)<\/script>/)?.[1];
+ assert.ok(block,'Missing independent Tutor connection test script');
+ const button={disabled:false,addEventListener(event,callback){this[event]=callback;}};
+ const output={className:'',textContent:''};
+ const page={getElementById:id=>id==='ssTutorQuickConnectionTest'?button:id==='ssTutorQuickConnectionStatus'?output:null};
+ const win={StudySpireHostedAI:{available:()=>true,diagnose:async()=>({ok:true,ready:false,code:'ACCOUNT_ID_INVALID',message:'Account ID needs checking.'})}};
+ vm.runInNewContext(block,{document:page,window:win});
+ assert.equal(typeof button.click,'function');
+ await button.click();
+ assert.equal(button.disabled,false);
+ assert.match(output.textContent,/Account ID needs checking/);
+ assert.equal(output.className,'status show bad');
+ win.StudySpireHostedAI.diagnose=async()=>({ok:true,ready:true,code:'TOKEN_ACTIVE',message:'Token is active.'});
+ await button.click();
+ assert.match(output.textContent,/Token is active/);
+ assert.equal(output.className,'status show good');
+ win.StudySpireHostedAI.available=()=>false;
+ await button.click();
+ assert.match(output.textContent,/Sign in to a StudySpire Cloud account/);
+});
