@@ -46,3 +46,10 @@ test('hosted backend handles provider configuration securely and teaches first',
  assert.doesNotMatch(cloud,/api\.cloudflare\.com\/client\/v4/);
  assert.doesNotMatch(html,/api\.cloudflare\.com\/client\/v4/);
 });
+
+test('a hosted AI failure requires student consent before switching to installed browser AI',()=>{
+ assert.match(html,/window\.confirm\('Hosted AI is unavailable or its daily limit is reached/);
+ assert.match(html,/You chose to wait and try again later/);
+ assert.match(html,/if\(!localEngine\)\{\s*showFreeTutorSetup\(\)/);
+ assert.doesNotMatch(html,/console\.warn\('Hosted AI unavailable; using the downloaded browser tutor/);
+});
