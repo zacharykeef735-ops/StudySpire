@@ -452,3 +452,25 @@ The GitHub workflow runs these tests on pull requests and updates to `main`. The
 ---
 
 **StudySpire is under active development.** If something breaks, record the browser, steps to reproduce, any visible error, and relevant console output—without sharing passwords, recovery codes, or secret keys.
+
+
+## Optional hosted tutor and fair-share quotas
+
+StudySpire's **optional** hosted AI route is the Supabase Edge Function `studyspire-tutor` (deployed with JWT verification). It only runs after an authorized project operator configures a compatible provider; the website itself requires **no provider keys**. The app attempts hosted tutoring for signed-in Cloud accounts, then offers an explicit **free WebGPU browser-AI download** if hosted inference is unavailable. Once browser AI is installed, it can also be used when hosted AI fails. This preserves tutoring and Mini without individual provider accounts.
+
+### Student quotas versus provider credits
+
+The private Supabase database tracks each StudySpire profile separately. The deployed server quota allows **up to 60 hosted requests per student per UTC day** and an overall maximum of **400 hosted requests per UTC day**. The browser Settings → AI & Mini panel includes a button to check remaining personal and shared site quotas. Every hosted request reserves quota before contacting the provider, so even failed provider calls can count. The counters reset at midnight UTC. These are *application limits*, not provider entitlements: the external free allowance can run out first. A student does not receive new external free credits by signing up, and API keys do not create independent provider allocations.
+
+### Hosted provider activation — for an eligible adult/institutional operator
+
+The dormant endpoint currently supports **Cloudflare Workers AI** using the `@cf/meta/llama-3.1-8b-instruct-fp8` model, with a strict Tutor-First policy and text-only inputs. Before enabling it for a student-facing product, an eligible adult/institution must review Cloudflare's current terms, model license, privacy practices, and school/child-data requirements. The Cloudflare service's own websites and subscriber services aren't directed to under-18 account holders. Do not bypass age restrictions or create provider accounts automatically for students.
+
+An authorized operator can activate the deployed endpoint by setting **Supabase Edge Function secrets** (not Github Actions secrets, not `cloud-config.js`, and not browser local storage):
+
+- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account's 32-character ID.
+- `CLOUDFLARE_AI_TOKEN`: a narrow Workers AI token for that account.
+
+Never paste an AI provider token in the StudySpire client or GitHub. If these secrets are missing, the endpoint responds with `NOT_CONFIGURED` and the website offers free WebGPU setup instead. Published Cloudflare free allowance is measured in *neurons*, not fixed daily question counts, so actual provider capacity depends on tokens/model costs.
+
+Implementation: `supabase/functions/studyspire-tutor/index.ts` is the deployed server code, and `studyspire-ai-quota-migration.sql` contains the quota schema and RPCs. Quotas require a canonical active StudySpire profile, not merely a username supplied by the browser.
