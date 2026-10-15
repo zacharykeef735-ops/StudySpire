@@ -45,7 +45,16 @@ jobs:
           const health=JSON.parse(healthBody);
           if(health.ok!==true||health.service!=='studyspire-guides'||health.aiNeurons!==0)throw Error('Worker health response invalid');
           console.log('WORKERS_AI_BINDING_STATUS: '+JSON.stringify({workerVersion:health.version,aiBound:health.aiBound===true}));
-          if(health.aiBound!==true)console.log('WORKERS_AI_NOT_YET_DEPLOYED: Public study guides work, but the Cloudflare Worker needs its updated AI binding published.');
+          if(health.version!==2||health.aiBound!==true)throw Error('The deployed Cloudflare Worker does not expose version 2 with an active AI binding');
+          const noAuth=await fetch(workerUrl+'/v1/tutor',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Origin':origin},
+            body:JSON.stringify({messages:[{role:'user',content:'Explain slope'}]}),
+            signal:AbortSignal.timeout(12000)
+          });
+          const unauth=await noAuth.json();
+          console.log('WORKERS_AI_AUTH_GUARD: '+JSON.stringify({status:noAuth.status,code:unauth.code}));
+          if(noAuth.status!==401||unauth.code!=='SIGN_IN')throw Error('AI binding endpoint does not enforce Cloud sign-in');
           if(healthResponse.headers.get('access-control-allow-origin')!=='*')throw Error('Worker CORS prevents the site from reading guides');
           const {body:guideBody}=await get(workerUrl+'/v1/guide?topic=photosynthesis',{headers:{Origin:origin}});
           const guide=JSON.parse(guideBody);
