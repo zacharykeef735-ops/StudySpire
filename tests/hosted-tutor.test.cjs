@@ -16,7 +16,7 @@ test('hosted AI starts first for signed-in users and has browser fallback',()=>{
  assert.match(html,/StudySpireTutorLastProvider='Browser tutor'/);
  assert.match(html,/state\.lastProvider=window\.StudySpireTutorLastProvider/);
  assert.match(html,/id="ssHostedTutorQuota"/);
- assert.match(html,/cloud\.js\?v=4\.03/);
+ assert.match(html,/cloud\.js\?v=4\.04/);
  assert.doesNotMatch(html,/CLOUDFLARE_AI_TOKEN|SUPABASE_SERVICE_ROLE_KEY/);
 });
 
@@ -39,7 +39,7 @@ test('server validates JWT and canonical profile before its privileged quota cla
 test('hosted backend handles provider configuration securely and teaches first',()=>{
  assert.match(server,/Deno\.env\.get\("CLOUDFLARE_AI_TOKEN"\)/);
  assert.match(server,/Deno\.env\.get\("CLOUDFLARE_ACCOUNT_ID"\)/);
- assert.match(server,/NOT_CONFIGURED/);
+ assert.match(server,/TOKEN_MISSING/);
  assert.match(server,/TEXT_ONLY/);
  assert.match(server,/submission-ready answer/);
  assert.match(server,/const model="@cf\/meta\/llama-3\.1-8b-instruct-fp8"/);
