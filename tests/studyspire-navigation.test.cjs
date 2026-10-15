@@ -97,7 +97,7 @@ test('search and the How to Use guide use canonical labels',()=>{
 
 test('new UI assets are cache-busted without changing stored data formats',()=>{
   assert.match(html,/studyspire-home\.js\?v=3\.94/);
-  assert.match(html,/studyspire-layout\.js\?v=3\.95/);
+  assert.match(html,/studyspire-layout\.js\?v=3\.96/);
   assert.match(html,/studyspire-layout\.css\?v=3\.95/);
   assert.match(html,/help-guide\.js\?v=3\.94/);
   assert.match(home,/data\.assignments/);
