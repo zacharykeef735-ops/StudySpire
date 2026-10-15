@@ -137,7 +137,7 @@ test('plain Tutor questions are serialized as text, not image-part arrays',()=>{
  assert.equal(simple.length,2);
  assert.equal(simple[1].role,'user');
  assert.equal(typeof simple[1].content,'string');
- assert.match(simple[1].content,/3x\\+7/);
+ assert.ok(simple[1].content.includes('3x+7'));
  assert.match(simple[1].content,/Teach me|step|process/i);
  const withImage=sandbox.buildTutorMessage({kind:'question',prompt:'Explain this',context:'',style:'hint',imageDataUrl:'data:image/png;base64,test'});
  assert.equal(Array.isArray(withImage[1].content),true);
