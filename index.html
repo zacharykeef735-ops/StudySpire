@@ -1053,7 +1053,9 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
         </select>
         <div class="fieldgroup"><label class="label" for="ssTutorSpeed">Tutor response speed</label><select id="ssTutorSpeed" class="field"><option value="fast">Fast — brief hints (recommended)</option><option value="balanced">Balanced — a little more detail</option><option value="detailed">Detailed — slower explanations</option></select><div class="hint">Fast mode uses fewer words and less conversation history. Model size still determines most of the speed.</div></div><div class="hint" id="modelDetailHint">Choose by speed or specialty. Recommended all-rounder: Llama 3.2 1B on most devices, or Llama 3.2 3B on stronger hardware. Switching models requires a separate first download; browser cache may speed up later launches. Requires WebGPU. These models are text-only and cannot inspect worksheet images.</div>
       </div>
-      <p class="hint" id="ssHostedTutorInfo">Signed-in students can use optional hosted tutoring when a project administrator activates it. Each student's daily question allowance is separate, but the provider's free usage is shared. If hosted AI is unavailable, the free browser tutor below still works.</p>
+      <div id="ssHostedTutorStatus" class="hint" style="margin:0 0 12px" role="status" aria-live="polite">Hosted tutoring is optional. A signed-in student can check their individual daily question allowance. Provider credits remain shared for the whole site.</div>
+      <button id="ssHostedTutorQuota" type="button" class="btn secondary small" style="margin-bottom:12px">Check hosted question allowance</button>
+      <p class="hint" id="ssHostedTutorInfo">StudySpire keeps separate per-student usage counters, but the provider's free allowance is shared. If hosted AI is unavailable, the free browser tutor below still works.</p>
       <div class="row">
         <button class="btn primary" id="loadLocalModel" type="button">⬇ Load browser AI</button>
         <button class="btn ghost" id="unloadLocalModel" type="button">Disconnect</button>
@@ -1061,6 +1063,17 @@ if(location.protocol==='file:'){setTimeout(()=>{toast('Open Settings and load th
       <div id="localModelStatus" class="status show info" role="status" aria-live="polite">Model not loaded. Loading requires internet for the first download.</div><details id="localModelHelp" style="margin-top:8px"><summary style="cursor:pointer;color:#b5c5f4;font-size:12px">AI stuck at 0%? Troubleshooting</summary><p class="hint" style="margin:8px 0">A first-time model download can take several minutes, especially on slower connections. Browser AI needs WebGPU and access to external model downloads. Try Chrome or Edge with graphics acceleration enabled, a different connection if school Wi-Fi blocks downloads, and the SmolLM2 360M model. Reload this page before retrying a stalled download. It runs locally; no API key is required.</p></details>
     `;
     (el("ssPanelAI")||dialogBody).prepend(panel);
+    el('ssHostedTutorQuota').addEventListener('click',async()=>{
+      const output=el('ssHostedTutorStatus');
+      const bridge=window.StudySpireHostedAI;
+      if(!bridge?.available()){output.textContent='Sign in to your StudySpire Cloud account to view your personal hosted AI allowance.';return;}
+      output.textContent='Checking your daily hosted question allowance…';
+      try{
+        const q=await bridge.quota();
+        const left=Math.max(0,Number(q.daily_limit)-Number(q.used));
+        output.textContent='Your remaining hosted questions today: '+left+' / '+Number(q.daily_limit)+'. Shared site allowance remaining: '+Math.max(0,Number(q.site_limit)-Number(q.site_used))+'. Reset: '+new Date(q.reset_utc).toLocaleString()+'.';
+      }catch(err){output.textContent='Could not check hosted AI allowance: '+(err?.message||'Unknown error');}
+    });
 
     // Prevent first-load failures from looking like a permanent 0% spinner.
     // The engine needs WebGPU and downloads model weights from third-party hosts.
