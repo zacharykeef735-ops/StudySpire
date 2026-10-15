@@ -86,7 +86,7 @@ test('the screenshot-matched dashboard code is present, connected and executable
   const layout=read('studyspire-layout.js'),styles=read('studyspire-layout.css');
   assert.doesNotThrow(()=>new Function(layout));
   assert.match(html,/href="studyspire-layout\.css\?v=3\.95"/);
-  assert.match(html,/src="studyspire-layout\.js\?v=3\.94"/);
+  assert.match(html,/src="studyspire-layout\.js\?v=3\.95"/);
   assert.ok(html.indexOf('studyspire-layout.js?v=3.95')>html.indexOf('studyspire-home.js?v=3.94'));
   for(const expected of ['ssScreenshotNav','ssTopSearch','ssNotificationButton','ssHomeFriendList',
     'ssHomeDocumentList','ssQuickCourses','ssHelpTopButton','miniLauncher']){
