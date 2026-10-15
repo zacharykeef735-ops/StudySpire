@@ -558,7 +558,7 @@ body{font-size:14px;line-height:1.55}
 <label class="upload" for="questionFile"><div class="uploadicon">▧</div><div><b>Add a worksheet picture</b><span>Upload a screenshot or photo (PNG, JPG, WebP).</span></div><input accept="image/*" id="questionFile" type="file"/></label>
 <div class="preview" id="questionPreview"><img alt="Worksheet preview" id="previewImg"/><div class="previewname" id="previewName"></div><button class="btn ghost small" id="removeAttachment">Remove</button></div>
 <div class="formgrid" style="margin-top:15px"><div class="fieldgroup"><label class="label" for="answerStyle">Explanation style</label><select id="answerStyle"><option value="steps">Teach me step by step</option><option value="hint">Hint first</option><option value="concise">Quick explanation</option><option value="check">Check my work</option></select></div><div class="fieldgroup"><label class="label" for="extraContext">Extra details (optional)</label><input class="field" id="extraContext" placeholder="What you tried, or teacher instructions"/></div></div>
-<div class="row"><button class="btn primary" id="askBtn">✦ Explain and guide me</button><button class="btn ghost" id="clearQuestion">Clear</button></div><div aria-live="polite" class="status" id="askStatus" role="status"></div>
+<div class="row" style="flex-wrap:wrap;gap:9px"><button class="btn primary" id="askBtn">✦ Explain and guide me</button><button class="btn ghost" id="clearQuestion">Clear</button><button class="btn secondary small" id="ssTutorQuickConnectionTest" type="button" aria-describedby="ssTutorQuickConnectionStatus">⚙ Test AI connection</button></div><div aria-live="polite" class="status" id="ssTutorQuickConnectionStatus" role="status"></div><div aria-live="polite" class="status" id="askStatus" role="status"></div>
 </div></section>
 <section class="card"><div class="cardhead"><div><div class="cardtitle">Tutor explanation</div><div class="sub">Learn the method, then try the next step yourself.</div></div></div><div class="empty" id="answerEmpty"><div class="emptyicon">✧</div><b>Your explanation will appear here</b><p>Load browser AI in Settings for concepts, hints, and guided practice without giving away final homework answers.</p></div><div class="hidden" id="answerPanel"><div class="responsehead"><span>STUDY SUMMIT TUTOR</span><span class="tag" id="answerTag">Guided explanation</span></div><div class="response responsebody" id="answerOutput"></div><div class="cardbody" style="padding-top:0"><div class="row"><button class="btn secondary small" id="copyAnswer">Copy explanation</button><button class="btn secondary small" id="saveAnswer">Save explanation</button><button class="btn secondary small" id="ssNextHint" type="button">↗ Next hint</button><button class="btn secondary small" id="ssSimilarExample" type="button">◎ Similar example</button><button class="btn ghost small" id="followUpBtn">Ask a follow-up</button></div></div></div></section>
 </div>
@@ -2233,6 +2233,35 @@ window.addEventListener('storage',e=>{if(e.key===key(SUITE)||e.key===key(ADDON)|
 renderEverything();
 })();
 
+</script>
+<script id="ss-tutor-connection-test">
+(function(){
+  'use strict';
+  const button=document.getElementById('ssTutorQuickConnectionTest');
+  const output=document.getElementById('ssTutorQuickConnectionStatus');
+  if(!button||!output)return;
+  button.addEventListener('click',async function(){
+    const bridge=window.StudySpireHostedAI;
+    if(!bridge?.available()){
+      output.className='status show info';
+      output.textContent='Sign in to a StudySpire Cloud account, then click Test AI connection again.';
+      return;
+    }
+    button.disabled=true;
+    output.className='status show info';
+    output.textContent='Checking Cloudflare configuration securely — no AI questions used…';
+    try{
+      const diagnostic=await bridge.diagnose();
+      output.className='status show '+(diagnostic.ready?'good':'bad');
+      output.textContent=(diagnostic.ready?'✓ ':'⚠ ')+String(diagnostic.message||diagnostic.code||'No diagnostic available');
+    }catch(error){
+      output.className='status show bad';
+      output.textContent='Connection test failed: '+String(error?.message||'Unknown error');
+    }finally{
+      button.disabled=false;
+    }
+  });
+})();
 </script>
 <!-- StudySpire v3.77: username/password accounts; older email Owners retained -->
 <script src="cloud-config.js"></script>
