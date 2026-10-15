@@ -1,0 +1,45 @@
+name: Verify live Cloudflare Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/worker-live-check.yml'
+      - 'cloudflare/**'
+      - 'wrangler.toml'
+      - 'cloud-config.js'
+      - 'studyspire-guide.js'
+      - 'studyspire-guide-catalog.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check current and expected Worker URLs
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const bases=[
+            'https://studyspire.zacharykeef735.workers.dev',
+            'https://studyspire-guides.zacharykeef735.workers.dev'
+          ];
+          let worked=false;
+          for(const base of bases){
+            for(const path of ['/health','/v1/guide?topic=photosynthesis']){
+              try{
+                const res=await fetch(base+path,{signal:AbortSignal.timeout(9500)});
+                const body=(await res.text()).slice(0,520);
+                let parsed={};
+                try{parsed=JSON.parse(body)}catch(_){}
+                console.log(JSON.stringify({url:base+path,status:res.status,type:res.headers.get('content-type'),cors:res.headers.get('access-control-allow-origin'),body:body.slice(0,220)}));
+                if(res.status===200 && ((path==='/health'&&parsed.ok===true&&parsed.service==='studyspire-guides')||(path.startsWith('/v1/guide')&&parsed.source==='studyspire-reviewed-guide'&&parsed.guide?.hint))) worked=true;
+              }catch(e){console.log(JSON.stringify({url:base+path,error:String(e)}))}
+            }
+          }
+          if(!worked){console.error('Worker guide endpoints are not serving the expected StudySpire payload.');process.exitCode=1}
+          JS
