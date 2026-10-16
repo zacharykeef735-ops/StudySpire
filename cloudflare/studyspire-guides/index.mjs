@@ -6,6 +6,8 @@ import {STUDY_GUIDES} from '../../studyspire-guide-catalog.mjs';
 const SUPABASE_URL='https://tcmlxpgomlfybgfdjeqj.supabase.co';
 const SUPABASE_PUBLIC_KEY='sb_publishable_oBcEtziurOtmQJ2fg5a9og_cLtXbyH9';
 const MODEL='@cf/meta/llama-3.1-8b-instruct-fp8-fast';
+const VISION_MODEL='@cf/meta/llama-3.2-11b-vision-instruct';
+const MAX_TUTOR_REQUEST=1000000;
 const POLICY=[
   'You are StudySpire, an encouraging, accurate tutor for secondary-school students.',
   'Teach concepts and problem-solving methods. Give a hint first for school assignments rather than a submission-ready answer.',
@@ -30,20 +32,39 @@ async function aiTutor(request, env) {
     return err(503,'AI_BINDING_MISSING','Workers AI binding is not deployed to this Cloudflare Worker yet.');
   const auth=request.headers.get('authorization')||'';
   if(!/^Bearer\s+\S+$/i.test(auth))return err(401,'SIGN_IN','StudySpire Cloud sign-in required.');
-  if(Number(request.headers.get('content-length')||0)>15000)
-    return err(413,'TOO_LARGE','Question too long.');
+  if(Number(request.headers.get('content-length')||0)>MAX_TUTOR_REQUEST)
+    return err(413,'TOO_LARGE','Image is too large after compression. Use a smaller worksheet image.');
   const body=await request.json().catch(()=>null);
-  if(!body||!Array.isArray(body.messages)||body.messages.length>14)
-    return err(400,'BAD_REQUEST','Provide up to 14 conversation messages.');
+  if(!body||JSON.stringify(body).length>MAX_TUTOR_REQUEST||!Array.isArray(body.messages)||body.messages.length>14)
+    return err(400,'BAD_REQUEST','Provide up to 14 messages and an image under the upload limit.');
   const turns=[];
+  let imageData=null;
   for(const item of body.messages){
     if(!item||!['system','developer','user','assistant'].includes(item.role))
       return err(400,'BAD_REQUEST','Invalid message role.');
     // Ignore untrusted system instructions; use only the server policy.
     if(item.role!=='user'&&item.role!=='assistant')continue;
-    if(typeof item.content!=='string'||item.content.length>2500||!item.content.trim())
-      return err(400,'TEXT_ONLY','Please type a shorter text-only question.');
-    turns.push({role:item.role,content:item.content});
+    let content=item.content;
+    if(Array.isArray(content)){
+      if(item.role!=='user')return err(400,'BAD_REQUEST','Only user messages may include a picture.');
+      const parts=[];
+      for(const part of content){
+        if(part?.type==='text'&&typeof part.text==='string'){parts.push(part.text);continue}
+        if(part?.type==='image_url'&&typeof part.image_url?.url==='string'){
+          if(imageData)return err(400,'BAD_REQUEST','Attach only one worksheet picture.');
+          const url=part.image_url.url;
+          if(!/^data:image\/(?:jpeg|png|webp);base64,[a-zA-Z0-9+/]+={0,2}$/.test(url)||url.length>800000)
+            return err(413,'TOO_LARGE','Use a compressed PNG, JPG, or WebP under 600 KB.');
+          imageData=url;
+          continue;
+        }
+        return err(400,'BAD_REQUEST','Unsupported message attachment.');
+      }
+      content=parts.join('\n');
+    }
+    if(typeof content!=='string'||content.length>2500||(!content.trim()&&!imageData))
+      return err(400,'BAD_REQUEST','Please enter a shorter study question.');
+    turns.push({role:item.role,content:content||'Explain the attached worksheet with hints.'});
   }
   if(!turns.length||turns.at(-1).role!=='user'||
       turns.reduce((total,m)=>total+m.content.length,0)>9000)
@@ -70,16 +91,17 @@ async function aiTutor(request, env) {
     const stream=body.stream===true;
     let modelOutput;
     try{
-      modelOutput=await env.AI.run(MODEL,{
+      modelOutput=await env.AI.run(imageData?VISION_MODEL:MODEL,{
         messages:[{role:'system',content:POLICY},...turns.slice(-6)],
-        max_tokens:Math.min(300,Math.max(90,Number(body.maxTokens)||190)),
+        ...(imageData?{image:imageData}:{}),
+        max_tokens:Math.min(350,Math.max(90,Number(body.maxTokens)||190)),
         temperature:0.3,
-        stream
+        stream:stream&&!imageData
       });
     }catch(_){
-      return err(502,'PROVIDER_UNAVAILABLE','Cloudflare Workers AI is temporarily unavailable or over its free limit. Choose browser AI or wait.');
+      return err(502,'PROVIDER_UNAVAILABLE',imageData?'Image analysis is unavailable. The vision model may require Meta license acceptance in Cloudflare, or the Workers AI allowance may be exhausted.':'Cloudflare Workers AI is temporarily unavailable or over its free limit. Choose browser AI or wait.');
     }
-    if(stream){
+    if(stream&&!imageData){
       if(!modelOutput||typeof modelOutput.getReader!=='function')
         return err(502,'STREAM_UNAVAILABLE','Cloudflare did not return a streaming tutor response.');
       return new Response(modelOutput,{
