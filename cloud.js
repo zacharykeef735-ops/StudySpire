@@ -800,33 +800,30 @@ async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=
  const activeBan=u.banned&&(!u.banned_until||new Date(u.banned_until)>new Date());const ban=document.createElement('button');ban.textContent=activeBan?'Lift ban early':'Ban';ban.className='ssc-light';ban.onclick=async()=>{try{if(activeBan){if(!confirm('Unban @'+u.username+' right now?'))return;await rpc('ss_change_ban',{target_user:u.id,ban_hours:0,reason:'Ban lifted early',lift:true})}
  else{const why=prompt('Reason for banning @'+u.username+' (required):');if(!why?.trim())return;const duration=prompt('Hours: 24 = 1 day, 168 = 7 days, 720 = 30 days, 0 = permanent','24');if(!['0','24','168','720'].includes(duration))return alert('Choose 0, 24, 168 or 720.');if(!confirm('Confirm ban for @'+u.username+'?'))return;await rpc('ss_change_ban',{target_user:u.id,ban_hours:Number(duration),reason:why,lift:false})}
  staffMsg('Ban action saved.');await renderStaff()}catch(e){staffMsg(e.message)}};row.append(ban)}box.append(row)}
- const reportsBox=$('ssCloudStaffReports');reportsBox.replaceChildren();for(const r of reports){const item=document.createElement('div');item.className='ssc-user';item.dataset.report=(r.about_username+' '+r.reporter_name+' '+r.reason).toLowerCase();item.dataset.status=r.status;const text=document.createElement('div');const line=document.createElement('strong');line.textContent=(r.status==='open'?'OPEN · ':'REVIEWED · ')+(r.about_username||'General report');const detail=document.createElement('small');detail.textContent='From @'+r.reporter_name+' · '+r.reason; text.append(line,detail);item.append(text);
- if(r.status==='open'){const review=document.createElement('button');review.className='ssc-light';review.textContent='Mark reviewed';review.onclick=async()=>{review.disabled=true;try{await rpc('ss_review_report',{report_id:r.id});await renderStaff();staffMsg('Report reviewed and automatically deleted. Action recorded in staff history.')}catch(e){staffMsg('Could not review report: '+e.message);review.disabled=false}};item.append(review)}reportsBox.append(item)}for(const r of avatarReports){
-  const item=document.createElement('div');item.className='ssc-user';
-  item.dataset.report=('profile picture avatar '+(r.target_username||'')+' '+(r.reporter||'')+' '+(r.reason||'')).toLowerCase();
-  item.dataset.status=r.status;
-  const content=document.createElement('div');
-  const heading=document.createElement('strong');heading.textContent='🖼 PICTURE REPORT · @'+(r.target_username||'Unknown');
-  const detail=document.createElement('small');detail.textContent='From @'+(r.reporter||'Unknown')+' · '+(r.reason||'No reason');
-  content.append(heading,detail);
-  if(r.status!=='open'){const resolved=document.createElement('small');resolved.textContent='Resolved · '+r.status;content.append(resolved)}
-  else if(!r.can_moderate){const notice=document.createElement('small');notice.textContent='Requires higher-ranking staff to review';content.append(notice)}
-  item.append(content);
-  if(r.status==='open'&&r.can_moderate){
-    for(const [label,decision] of [['Remove picture','remove'],['Dismiss','dismiss']]){
-      const button=document.createElement('button');button.className='ssc-light';button.textContent=label;
-      button.onclick=async()=>{
-        if(decision==='remove'&&!confirm('Remove the reported profile picture from @'+r.target_username+'?'))return;
-        button.disabled=true;
-        try{await rpc('ss_avatar_staff_review',{report_id:r.id,decision});await renderStaff();staffMsg('Profile picture report reviewed.')}
-        catch(e){staffMsg('Could not review picture report: '+e.message);button.disabled=false}
-      };
-      item.append(button);
-    }
-  }
-  reportsBox.append(item);
+
+ const reportsBox=$('ssCloudStaffReports');reportsBox.replaceChildren();
+ for(const r of reports.filter(x=>x.status==='open')){
+  const row=document.createElement('div');row.className='ssc-user';
+  row.dataset.report=(r.about_username+' '+r.reporter_name+' '+r.reason).toLowerCase();row.dataset.status='open';
+  const info=document.createElement('div');const heading=document.createElement('strong');
+  heading.textContent='⚑ REPORT · '+(r.about_username?'@'+r.about_username:'General issue');
+  const detail=document.createElement('small');
+  detail.textContent='From @'+r.reporter_name+' · '+new Date(r.created_at).toLocaleString();
+  info.append(heading,detail);row.append(info);
+  const review=document.createElement('button');review.className='ssc-light';review.textContent='Review report';
+  review.onclick=()=>openStaffReport(r,'general');row.append(review);reportsBox.append(row);
  }
- if(!reports.length&&!avatarReports.length)reportsBox.textContent='No reports.';
+ for(const r of avatarReports.filter(x=>x.status==='open')){
+  const row=document.createElement('div');row.className='ssc-user';
+  row.dataset.report=('profile picture '+(r.target_username||'')+' '+(r.reporter||'')+' '+(r.reason||'')).toLowerCase();
+  row.dataset.status='open';const info=document.createElement('div');const heading=document.createElement('strong');
+  heading.textContent='🖼 PICTURE REPORT · @'+(r.target_username||'Unknown');
+  const detail=document.createElement('small');detail.textContent='From @'+(r.reporter||'Unknown')+' · '+new Date(r.created_at).toLocaleString();
+  info.append(heading,detail);row.append(info);
+  const review=document.createElement('button');review.className='ssc-light';review.textContent='Review report';
+  review.onclick=()=>openStaffReport(r,'avatar');row.append(review);reportsBox.append(row);
+ }
+ if(!reports.some(x=>x.status==='open')&&!avatarReports.some(x=>x.status==='open'))reportsBox.textContent='No open reports.';
  applyStaffFilters();
  // Blocked chat attempts are logged server-side without retaining their message text.
  let languageFlags=$('ssCloudLanguageFlags');
@@ -905,6 +902,22 @@ function addStyling(){const style=document.createElement('style');style.textCont
  #ssCloudStaffDialog .ssc-admin-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
  #ssCloudStaffDialog .ssc-admin-tools input,#ssCloudStaffDialog .ssc-admin-tools select{min-width:150px;flex:1;background:#0c1524;color:#fff;border:1px solid #486080;border-radius:9px;padding:10px;font:inherit}
  #ssCloudStaffDialog .ssc-user[hidden]{display:none!important}#ssCloudStaffDialog .ssc-title-row{align-items:center}
+ #ssCloudReportViewer{position:fixed;inset:0;z-index:100001;background:#080e19f5;display:flex;justify-content:center;align-items:flex-start;padding:5vh 14px 30px;overflow:auto;color:#edf2ff;font:14px/1.55 system-ui,sans-serif}
+ #ssCloudReportViewer .ssc-report-review-panel{width:min(100%,720px);border:1px solid #4c5679;border-radius:17px;padding:24px;background:#151e30;box-shadow:0 25px 70px #000a}
+ #ssCloudReportViewer .ssc-report-review-head{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;border-bottom:1px solid #34415c;padding-bottom:13px}
+ #ssCloudReportViewer h2{font-size:22px;margin:0}
+ #ssCloudReportViewer button{cursor:pointer;background:#293852;border:1px solid #536b90;color:#eef2ff;border-radius:9px;padding:10px 12px;font:inherit}
+ #ssCloudReportViewer button:disabled{opacity:.5;cursor:wait}
+ #ssCloudReportViewer .ssc-report-review-field{padding:10px 0;border-bottom:1px solid #2b3850}
+ #ssCloudReportViewer .ssc-report-review-field p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+ #ssCloudReportViewer .ssc-report-review-image{display:block;max-width:min(100%,310px);max-height:280px;object-fit:contain;border:1px solid #455674;border-radius:10px;margin:15px auto}
+ #ssCloudReportViewer .ssc-report-review-actions{display:flex;gap:10px;flex-wrap:wrap;padding-top:10px}
+ #ssCloudReportViewer .ssc-report-review-status{color:#ffb9ad;min-height:19px}
+ #ssCloudStaffDialog .ssc-report-history-item{display:grid;gap:7px;padding:13px 0;border-bottom:1px solid #34415c;overflow-wrap:anywhere}
+ #ssCloudStaffDialog .ssc-report-history-item small{color:#b1c0d7}
+ #ssCloudStaffDialog .ssc-report-history-item summary{cursor:pointer;color:#ccc7ff}
+ #ssCloudStaffDialog .ssc-report-history-item[hidden]{display:none!important}
+
  @media(max-width:720px){#ssCloudStaffDialog .ssc-user{align-items:flex-start}#ssCloudStaffDialog .ssc-user select{max-width:100%}}
 `;document.head.append(style)}
 addStyling();
