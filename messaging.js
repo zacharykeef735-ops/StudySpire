@@ -10,6 +10,7 @@ const pane=document.querySelector('.sd-suite-pane[data-pane="friends"]');
 if(!pane)return;
 const emptyOverview=()=>({friends:[],incoming:[],outgoing:[],blocked:[],decks:[]});
 let state=emptyOverview(),selected='',busy=false,fetching=false,threadToken=0,lastThreadKey='',refreshQueued=false,lastFetch=0;
+let messagingRestricted=false,messagingRestrictionReason='';
 let pendingSearch=null;
 const rpc=(name,args)=>bridge.rpc(name,args||{});
 const dateText=value=>{
@@ -43,14 +44,15 @@ function setEnabled(yes){
 function updateComposer(){
  const can=!!account()&&!!selected&&state.friends.some(friend=>friend.id===selected);
  const send=$('sdSendMessage'),share=$('sdShareDeck'),message=$('sdFriendMessage');
- if(send)send.disabled=!can||busy;
- if(share)share.disabled=!can||busy;
- if(message)message.disabled=!can;
+ if(send)send.disabled=!can||busy||messagingRestricted;
+ if(share)share.disabled=!can||busy||messagingRestricted;
+ if(message){message.disabled=!can||messagingRestricted;message.placeholder=messagingRestricted?'Messaging restricted by an Owner':'Write a message…';}
 }
 function selectedName(){
  return state.friends.find(f=>f.id===selected)?.username||'friend';
 }
 function signedOut(){
+ messagingRestricted=false;messagingRestrictionReason='';
  state=emptyOverview();selected='';lastThreadKey='';threadToken++;
  for(const id of ['sdFriendResults','sdFriendRequests','sdFriendsList','sdMessageThread','sdSharedDeckInbox']){
   const el=$(id);if(el)noItems(el,'Sign in to StudySpire Cloud to use messaging.');
@@ -210,7 +212,7 @@ async function refresh(silent=false){
  if(fetching){refreshQueued=true;return}
  fetching=true;
  try{
-  const response=await rpc('ss_social_overview');
+  const [response,restriction]=await Promise.all([rpc('ss_social_overview'),rpc('ss_my_messaging_status')]);
   if(!account())return signedOut();
   state={
    friends:Array.isArray(response?.friends)?response.friends:[],
@@ -219,8 +221,13 @@ async function refresh(silent=false){
    blocked:Array.isArray(response?.blocked)?response.blocked:[],
    decks:Array.isArray(response?.decks)?response.decks:[]
   };
+  const wasRestricted=messagingRestricted;
+  messagingRestricted=restriction?.restricted===true;
+  messagingRestrictionReason=messagingRestricted?String(restriction?.reason||''):'';
   setEnabled(true);renderOverview();if(selected)await loadThread();lastFetch=Date.now();
-  if(!silent)status('☁ Messaging synced. Conversations are private to accepted friends.','good');
+  if(messagingRestricted&&(!silent||!wasRestricted))status('🔇 An Owner restricted outgoing messages and study-room posts'+(messagingRestrictionReason?': '+messagingRestrictionReason:'.')+' You can still read your conversations.','error');
+  else if(!silent)status('☁ Messaging synced. Conversations are private to accepted friends.','good');
+  else if(wasRestricted)status('🔊 Your messaging access has been restored.','good');
  }catch(error){status('Messaging could not sync: '+errorText(error),'error')}
  finally{
   fetching=false;
