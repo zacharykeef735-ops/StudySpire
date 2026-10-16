@@ -892,7 +892,22 @@ function currentMessages(body){if(body.kind==='essay'){const n=Math.max(1,Math.m
  const styles={steps:'Explain the concept and process without finishing the exact problem. Demonstrate with different example numbers, then give a first hint.',hint:'Give one helpful hint at a time; stop before the final answer and ask me to try the next step.',concise:'Give a short concept explanation and one next-step hint, not the final homework answer.',check:'Check my attempted reasoning, identify what works or needs adjusting, but guide me to make the correction myself.'};let text='Question:\n'+(body.prompt||'Please inspect the attached worksheet and identify its questions.')+'\n\nExtra details:\n'+(body.context||'None provided')+'\n\nRequested style: '+(styles[body.style]||styles.steps)+'\n\nIf an image is attached, inspect it, work on visible questions separately if useful, and say when text is too blurry to read. Do not guess at unclear numbers or symbols.';const content=body.imageDataUrl?[{type:'text',text},{type:'image_url',image_url:{url:body.imageDataUrl}}]:text;return [{role:'system',content:'You are StudySpire, a supportive and rigorous personal tutor. Teach rather than completing assignments for the learner. Ask one useful diagnostic question when appropriate, provide hints and step-by-step reasoning, invite the learner to try the next step, check their work constructively, adapt to the chosen grade, and use short practice questions. For homework or essays, guide the process instead of handing over submission-ready work. Be accurate and never invent sources.'},{role:'user',content}];}
 async function sendToAI(){throw new Error('Open Settings → AI & Mini and load the browser tutor first.');}
 function requireConnected(){throw new Error('Open Settings → AI & Mini and load the browser tutor first.');}
-async function prepareImage(file){if(!file.type.startsWith('image/'))throw new Error('Please choose an image file such as PNG, JPG, or WebP.');if(file.size>15*1024*1024)throw new Error('That image is over 15 MB. Try a smaller screenshot.');const src=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Could not read that image.'));r.readAsDataURL(file)});const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error('Could not open that image.'));img.src=src});const scale=Math.min(1,1700/Math.max(img.width,img.height));const canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/jpeg',.84)}
+async function prepareImage(file){
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type))throw new Error('Choose a PNG, JPG, or WebP picture.');
+ if(file.size>15*1024*1024)throw new Error('The original picture is over 15 MB.');
+ const src=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Cannot read picture.'));reader.readAsDataURL(file)});
+ const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('Cannot open picture.'));img.src=src});
+ let scale=Math.min(1,1150/Math.max(img.width,img.height));
+ for(let attempt=0;attempt<7;attempt++){
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
+  const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image conversion is unavailable in this browser.');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  const picture=canvas.toDataURL('image/jpeg',Math.max(.42,.74-attempt*.055));
+  if(picture.length<=760000)return picture;
+  scale*=.8;
+ }
+ throw Error('Could not compress this image for hosted AI. Try cropping the worksheet.');
+}
 $('questionFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{state.attachment=await prepareImage(file);state.attachmentName=file.name;$('previewImg').src=state.attachment;$('previewName').textContent=file.name;$('questionPreview').classList.add('show');toast('Worksheet image added.')}catch(err){status('askStatus',err.message,'bad')}e.target.value=''});
 $('removeAttachment').onclick=()=>{state.attachment=null;state.attachmentName='';$('questionPreview').classList.remove('show');$('previewImg').src=''};
 $('askBtn').onclick=async()=>{const prompt=$('questionInput').value.trim();if(!prompt&&!state.attachment){status('askStatus','Type a question or attach a worksheet picture first.','warn');return}const btn=$('askBtn');btn.disabled=true;btn.textContent='Thinking…';clearStatus('askStatus');window.StudySpireTutorOnChunk=partial=>{const output=$('answerOutput');if(output)output.textContent=partial;$('answerTag').textContent='Hosted tutor · responding…';$('answerEmpty').classList.add('hidden');$('answerPanel').classList.remove('hidden');};try{requireConnected();const answer=await sendToAI(currentMessages({kind:'question',prompt,context:$('extraContext').value.trim(),style:$('answerStyle').value,imageDataUrl:state.attachment}),null,2600);state.lastAnswer=answer;state.lastQuestion=prompt||('Worksheet: '+state.attachmentName);state.lastProvider=window.StudySpireTutorLastProvider||'Browser tutor';$('answerOutput').textContent=answer;$('answerTag').textContent=state.lastProvider;$('answerEmpty').classList.add('hidden');$('answerPanel').classList.remove('hidden');status('askStatus','Tutor explanation ready. Try the next step yourself, or request another hint.','good')}catch(e){status('askStatus',e.message,'bad')}finally{window.StudySpireTutorOnChunk=null;btn.disabled=false;btn.textContent='✦ Explain and guide me'}};
@@ -2340,13 +2355,13 @@ renderEverything();
 </script>
 <!-- StudySpire v3.77: username/password accounts; older email Owners retained -->
 <script src="cloud-config.js"></script>
-<script src="cloud.js?v=4.07"></script>
+<script src="cloud.js?v=4.09"></script>
 <script src="enhancements.js?v=3.81"></script>
 <script src="messaging.js?v=3.92"></script>
 <script src="help-guide.js?v=3.94"></script>
 <script src="studyspire-home.js?v=3.94"></script>
 <script src="studyspire-layout.js?v=3.96"></script>
-<script src="avatars.js?v=3.92"></script>
-<script src="verified-roles.js?v=4.01"></script>
+<script src="avatars.js?v=3.93"></script>
+<script src="verified-roles.js?v=4.03"></script>
 </body>
 </html>
