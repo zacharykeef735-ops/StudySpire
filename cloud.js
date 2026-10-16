@@ -542,6 +542,25 @@ window.StudySpireHostedAI={
   return data.answer;
  }
 };
+// Moderation checks are performed by a verified Supabase gateway, which invokes
+// Cloudflare Workers AI and records a short-lived approval for the exact content.
+// The browser never gets administrative credentials.
+window.StudySpireContentSafety={
+ review:async(kind,content)=>{
+  if(!live||!person||!profile||banned(profile))throw Error('Sign in to StudySpire before posting.');
+  if(!['message','room','bio','avatar'].includes(kind)||typeof content!=='string')throw Error('Invalid content to scan.');
+  if(!content.trim())return {ok:true,allowed:true,active:false};
+  const {data,error}=await client.functions.invoke('studyspire-moderate',{body:{kind,content}});
+  if(error){
+   let detail=null;
+   try{detail=await error.context?.json?.()}catch(_){}
+   throw Error(detail?.message||'Safety scanner unavailable. Please try again.');
+  }
+  if(!data?.ok)throw Error(data?.message||'Unable to scan this content.');
+  if(data.allowed!==true)throw Error(data.message||'This content violates StudySpire safety rules.');
+  return data;
+ }
+};
 // Public profile labels expose only server-verified username, role and bio.
 // This read-only RPC is available even for guests; no client can grant itself a role.
 const PUBLIC_PROFILE_ALLOWED=new Set(['ss_public_profile','ss_public_titles']);
