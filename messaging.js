@@ -283,8 +283,9 @@ function init(){
   if(!text)throw Error('Write a message before sending.');
   if(text.length>2000)throw Error('Messages must be under 2000 characters.');
   if(!selected)throw Error('Choose an accepted friend.');
+  await window.StudySpireContentSafety.review('message',text);
   const sentId=await rpc('ss_social_send',{to_user:selected,message:text});
-  if(!sentId)throw Error('⚑ Message blocked: inappropriate language is not allowed in StudySpire chat. This attempt was flagged for staff review. Edit your message and try again.');
+  if(!sentId)throw Error('⚑ Message blocked by StudySpire safety rules. Edit your message and try again.');
   $('sdFriendMessage').value='';lastThreadKey='';await loadThread();
   status('Message delivered to your shared conversation.','good');
  });
