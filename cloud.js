@@ -461,14 +461,20 @@ window.StudySpireHostedAI={
     const {data:sessionData,error:sessionError}=await client.auth.getSession();
     const accessToken=sessionData?.session?.access_token;
     if(sessionError||!accessToken)throw Error('Cloud session expired. Sign in again.');
-    const response=await fetch(workerRoot+'/v1/tutor',{
+    let response=null;
+    try{response=await fetch(workerRoot+'/v1/tutor',{
       method:'POST',
       headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},
       body:JSON.stringify({messages,maxTokens:Math.min(300,Math.max(90,Number(maxTokens)||190)),stream:true}),
       credentials:'omit',
       referrerPolicy:'no-referrer',
       signal:AbortSignal.timeout(50000)
-    });
+    });}catch(networkError){
+      // Proxy, DNS and CORS transport failures may block workers.dev.
+      // Supabase Edge Function retries server-to-server, without bypassing authentication.
+      console.warn('Direct Worker connection unavailable; using Supabase AI gateway.',networkError?.name||'Network error');
+    }
+    if(response){
     const issueFrom=(details,status)=>{
       const error=new Error(details?.message||'Hosted tutor unavailable.');
       error.code=details?.code||('HTTP_'+status);
@@ -517,6 +523,7 @@ window.StudySpireHostedAI={
     }finally{reader.releaseLock()}
     if(!answer.trim())throw Error('Cloudflare returned an empty tutor response.');
     return answer.trim();
+    }
   }
   // Legacy fallback for installations without the direct Cloudflare Worker URL.
   const {data,error}=await client.functions.invoke('studyspire-tutor',{
