@@ -321,7 +321,7 @@ function staffAccountRow(item,refresh){
 }
 function mountStaff(modal){
   const user=account();
-  if(!user||!['moderator','admin','owner'].includes(user.role)||!modal)return;
+  if(!user||!['moderator','admin','co_owner','owner'].includes(user.role)||!modal)return;
   if(modal.querySelector('#ssAvatarStaffTab'))return;
   const tabs=modal.querySelector('.ssc-staff-tabs'),host=modal.querySelector('.ssc-staffbox');
   if(!tabs||!host)return;
@@ -330,7 +330,7 @@ function mountStaff(modal){
   const section=node('section',null,'ssc-admin-section ss-avatar-staff-pane');
   section.dataset.staffPane='avatars';section.hidden=true;
   const title=node('h3','Profile picture reports and restrictions');
-  const desc=node('p','Moderators can review and remove Student pictures. Admins can also restrict Students and Moderators. Owners can manage all other accounts.','ss-avatar-hint');
+  const desc=node('p','Moderators can review and remove Student pictures. Admins can also restrict Students and Moderators. Owners and Co-Owners can manage other accounts according to their permissions.','ss-avatar-hint');
   const search=node('div',null,'ss-avatar-staff-search');
   const find=node('input');find.type='search';find.placeholder='Exact username to view / report a picture';find.setAttribute('aria-label','Account username');
   const open=button('View picture',()=>{
