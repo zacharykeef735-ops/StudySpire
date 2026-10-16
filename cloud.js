@@ -423,7 +423,7 @@ async function rpc(name,args){
 const SOCIAL_ALLOWED=new Set([
  'ss_chat_language_check','ss_social_lookup','ss_social_overview','ss_social_request','ss_social_respond',
  'ss_social_cancel','ss_social_unfriend','ss_social_block','ss_social_unblock',
- 'ss_social_messages','ss_social_send','ss_social_share_deck','ss_social_report_message'
+ 'ss_social_messages','ss_social_send','ss_social_share_deck','ss_social_report_message','ss_my_messaging_status'
 ]);
 window.StudySummitMessagingBridge={
  configured:ready,
