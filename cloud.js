@@ -410,7 +410,16 @@ async function importLegacy(){if(!person||banned(profile))return;const picker=do
 async function sendReport(){if(!person||banned(profile))return;const about=prompt('Username involved (optional):','');if(about===null)return;
  const message=prompt('Describe what happened (at least 10 characters):');if(message===null)return;
  const {error}=await client.rpc('ss_report_issue',{about_name:about,complaint:message});alert(error?'Could not send report: '+error.message:'Report received. Staff can review it in Cloud staff.')}
-async function rpc(name,args){const {data,error}=await client.rpc(name,args||{});if(error)throw Error(error.message);return data}
+async function rpc(name,args){
+ // Group-room content also gets the same AI safety review when posted through
+ // the Cloud bridge. The database enforces a matching proof once strict mode is enabled.
+ if(name==='ss_group_post'&&typeof args?.message==='string'){
+  await window.StudySpireContentSafety.review('room',args.message);
+ }
+ const {data,error}=await client.rpc(name,args||{});
+ if(error)throw Error(error.message);
+ return data;
+}
 const SOCIAL_ALLOWED=new Set([
  'ss_chat_language_check','ss_social_lookup','ss_social_overview','ss_social_request','ss_social_respond',
  'ss_social_cancel','ss_social_unfriend','ss_social_block','ss_social_unblock',
