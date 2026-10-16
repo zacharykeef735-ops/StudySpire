@@ -153,7 +153,9 @@ async function openOwn(){
     const saveBio=button('Save bio',async()=>{
       saveBio.disabled=true;
       try{
-        const saved=await rpc('ss_profile_set_bio',{new_bio:bioField.value});
+        const proposed=bioField.value.trim();
+        if(proposed)await window.StudySpireContentSafety.review('bio',proposed);
+        const saved=await rpc('ss_profile_set_bio',{new_bio:proposed});
         bioField.value=saved.bio||'';
         status(dialogStatus,'Bio saved. Anyone can view it on your profile.');
         window.StudySpireRoles?.refreshLabels();
@@ -177,6 +179,8 @@ async function openOwn(){
       try{
         status(dialogStatus,'Resizing your picture…');
         const encoded=await readImage(selected);
+        status(dialogStatus,'Scanning picture for safe content…');
+        await window.StudySpireContentSafety.review('avatar',encoded);
         status(dialogStatus,'Saving your picture…');
         const result=await rpc('ss_avatar_set',{p_image_data:encoded});
         me=result;avatarCache.set(result.username,result.image_data||null);
