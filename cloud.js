@@ -676,6 +676,106 @@ function applyStaffFilters(){
  $('ssCloudStaffReports')?.querySelectorAll('[data-report]').forEach(row=>{row.hidden=!(row.dataset.report.includes(rs)&&(rf==='all'||row.dataset.status===rf))});
 }
 
+
+function applyReportHistoryFilters(){
+ const q=($('ssCloudReportHistorySearch')?.value||'').toLowerCase().trim();
+ $('ssCloudReportHistory')?.querySelectorAll('[data-history-search]').forEach(row=>row.hidden=!row.dataset.historySearch.includes(q));
+}
+async function renderReportHistory(){
+ if(role!=='owner')throw Error('Only Owners can view report history.');
+ const host=$('ssCloudReportHistory');if(!host)return;
+ host.textContent='Loading archived reports…';
+ const rows=await rpc('ss_owner_report_history');
+ staffData.reportHistory=Array.isArray(rows)?rows:[];
+ host.replaceChildren();
+ for(const r of staffData.reportHistory){
+  const item=document.createElement('article');item.className='ssc-report-history-item';
+  item.dataset.historySearch=[r.kind,r.reporter,r.target,r.reason,r.decision,r.reviewer].join(' ').toLowerCase();
+  const label=document.createElement('strong');
+  label.textContent=(r.kind==='avatar'?'🖼 Picture':'⚑ General')+' · @'+(r.target||'General');
+  const when=document.createElement('small');
+  when.textContent=String(r.decision||'resolved').replaceAll('_',' ')+' · @'+(r.reviewer||'Unknown')+' · '+new Date(r.resolved_at).toLocaleString();
+  const disclosure=document.createElement('details');
+  const summary=document.createElement('summary');summary.textContent='Read original report';
+  const evidence=document.createElement('p');
+  evidence.textContent='Reported by @'+(r.reporter||'Unknown')+'\nSubmitted: '+new Date(r.created_at).toLocaleString()+'\nReason: '+(r.reason||'Unspecified');
+  evidence.style.whiteSpace='pre-wrap';evidence.style.overflowWrap='anywhere';
+  disclosure.append(summary,evidence);item.append(label,when,disclosure);host.append(item);
+ }
+ if(!staffData.reportHistory.length)host.textContent='No resolved reports yet. New decisions will appear here.';
+ applyReportHistoryFilters();
+}
+function openStaffReport(report,kind){
+ $('ssCloudReportViewer')?.remove();
+ const avatar=kind==='avatar';
+ const shade=document.createElement('div');shade.id='ssCloudReportViewer';shade.tabIndex=-1;
+ const dialog=document.createElement('section');dialog.className='ssc-report-review-panel';dialog.setAttribute('role','dialog');
+ dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','ssCloudReportReviewTitle');
+ const top=document.createElement('div');top.className='ssc-report-review-head';
+ const heading=document.createElement('h2');heading.id='ssCloudReportReviewTitle';
+ heading.textContent=avatar?'🖼 Profile picture report':'⚑ Report review';
+ const close=document.createElement('button');close.textContent='✕ Close without decision';close.className='ssc-light';
+ close.onclick=()=>shade.remove();top.append(heading,close);dialog.append(top);
+ function field(label,value){
+  const group=document.createElement('div');group.className='ssc-report-review-field';
+  const name=document.createElement('b');name.textContent=label;
+  const content=document.createElement('p');content.textContent=String(value||'Not provided');
+  group.append(name,content);dialog.append(group);
+ }
+ const target=avatar?report.target_username:report.about_username;
+ const reporter=avatar?report.reporter:report.reporter_name;
+ field('Reported account',target?'@'+target:'General issue / no account');
+ field('Reported by',reporter?'@'+reporter:'Unknown');
+ field('Submitted',new Date(report.created_at).toLocaleString());
+ field('Report and evidence',report.reason);
+ if(avatar&&typeof report.image_snapshot==='string'&&report.image_snapshot.startsWith('data:image/webp;base64,')&&report.image_snapshot.length<100000){
+  const img=document.createElement('img');img.className='ssc-report-review-image';img.src=report.image_snapshot;
+  img.alt='Reported profile picture as submitted';dialog.append(img);
+ }
+ const hint=document.createElement('p');hint.className='ssc-muted';
+ hint.textContent='Closing this window leaves the report open. It disappears from the inbox only after a decision, which is saved in Owner history.';
+ dialog.append(hint);
+ const status=document.createElement('p');status.className='ssc-report-review-status';status.setAttribute('role','status');dialog.append(status);
+ const actions=document.createElement('div');actions.className='ssc-report-review-actions';
+ if(avatar&&report.can_moderate!==true){
+  const restricted=document.createElement('p');restricted.textContent='Only higher-ranking staff can decide this report.';
+  actions.append(restricted);
+ }else{
+  const options=avatar
+   ? [['Dismiss · no violation','dismiss'],['Take down profile picture','remove']]
+   : [['Dismiss · no violation','dismiss'],['Take down profile picture','remove_picture'],['Clear reported bio','remove_bio']];
+  if(!avatar&&((report.reason||'').startsWith('Message report [')||report.reported_message_id))
+   options.push(['Delete reported message','remove_message']);
+  if(!avatar&&role!=='moderator'&&target)
+   options.push(['Ban for 24 hours','ban_24h'],['Ban for 7 days','ban_7d']);
+  for(const [label,decision] of options){
+   const btn=document.createElement('button');btn.className='ssc-light';btn.textContent=label;
+   btn.onclick=async()=>{
+    const explanation=decision==='dismiss'
+     ? 'Dismiss this report without removing content? The decision will be archived.'
+     : 'Confirm '+label+' for @'+(target||'this account')+'? This closes and archives the report.';
+    if(!confirm(explanation))return;
+    actions.querySelectorAll('button').forEach(b=>b.disabled=true);
+    status.textContent='Applying decision…';
+    try{
+     if(avatar)await rpc('ss_avatar_staff_review',{report_id:report.id,decision});
+     else await rpc('ss_resolve_report',{report_id:report.id,decision});
+     shade.remove();
+     await renderStaff();
+     staffMsg('Decision recorded: '+label+'. Report archived.');
+    }catch(e){
+     status.textContent='Could not resolve report: '+(e?.message||'Unknown error');
+     actions.querySelectorAll('button').forEach(b=>b.disabled=false);
+    }
+   };
+   actions.append(btn);
+  }
+ }
+ dialog.append(actions);shade.append(dialog);
+ shade.onclick=e=>{if(e.target===shade)shade.remove()};
+ shade.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();shade.remove()}};
+ document.body.append(shade);close.focus();
+}
 async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=['owner','co_owner','admin'].includes(role);
  const [users,reports,audit,chatFlags,avatarData]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([]),rpc('ss_staff_chat_flags'),rpc('ss_avatar_staff_overview')]);
  const avatarReports=Array.isArray(avatarData?.reports)?avatarData.reports:[];
