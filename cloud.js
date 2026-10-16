@@ -667,7 +667,7 @@ async function renderRecovery(){
   buttons.append(issue,deny);row.append(buttons);container.append(row)
  }
 }
-let staffData={users:[],reports:[],avatarReports:[],audit:[],reportHistory:[]};
+let staffData={users:[],reports:[],avatarReports:[],audit:[],reportHistory:[],messagingRestrictions:[]};
 function staffMsg(message){if($('ssCloudStaffMsg'))$('ssCloudStaffMsg').textContent=message}
 function applyStaffFilters(){
  const s=($('ssCloudAccountSearch')?.value||'').toLowerCase().trim(),filter=$('ssCloudAccountFilter')?.value||'all';
@@ -777,9 +777,9 @@ function openStaffReport(report,kind){
  document.body.append(shade);close.focus();
 }
 async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=['owner','co_owner','admin'].includes(role);
- const [users,reports,audit,chatFlags,avatarData]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([]),rpc('ss_staff_chat_flags'),rpc('ss_avatar_staff_overview')]);
+ const [users,reports,audit,chatFlags,avatarData,messagingRestrictions]=await Promise.all([canAccounts?rpc('ss_staff_profiles'):Promise.resolve([]),rpc('ss_staff_reports'),canAccounts?rpc('ss_staff_audit'):Promise.resolve([]),rpc('ss_staff_chat_flags'),rpc('ss_avatar_staff_overview'),role==='owner'?rpc('ss_owner_messaging_restrictions'):Promise.resolve([])]);
  const avatarReports=Array.isArray(avatarData?.reports)?avatarData.reports:[];
- staffData={...staffData,users,reports,avatarReports,audit};
+ staffData={...staffData,users,reports,avatarReports,audit,messagingRestrictions:Array.isArray(messagingRestrictions)?messagingRestrictions:[]};
  const openReportCount=reports.filter(r=>r.status==='open').length+avatarReports.filter(r=>r.status==='open').length;const summary=$('ssCloudAdminSummary');if(summary){summary.replaceChildren();
  const overview=role==='moderator'
    ? [[openReportCount,'Open reports'],[Array.isArray(chatFlags)?chatFlags.length:0,'Blocked attempts']]
@@ -799,7 +799,40 @@ async function renderStaff(){staffMsg('Loading dashboard…');const canAccounts=
  if(['owner','co_owner','admin'].includes(role)&&u.role!=='owner'&&u.id!==person.id&&(['owner','co_owner'].includes(role)||!['admin','co_owner'].includes(u.role))){
  const activeBan=u.banned&&(!u.banned_until||new Date(u.banned_until)>new Date());const ban=document.createElement('button');ban.textContent=activeBan?'Lift ban early':'Ban';ban.className='ssc-light';ban.onclick=async()=>{try{if(activeBan){if(!confirm('Unban @'+u.username+' right now?'))return;await rpc('ss_change_ban',{target_user:u.id,ban_hours:0,reason:'Ban lifted early',lift:true})}
  else{const why=prompt('Reason for banning @'+u.username+' (required):');if(!why?.trim())return;const duration=prompt('Hours: 24 = 1 day, 168 = 7 days, 720 = 30 days, 0 = permanent','24');if(!['0','24','168','720'].includes(duration))return alert('Choose 0, 24, 168 or 720.');if(!confirm('Confirm ban for @'+u.username+'?'))return;await rpc('ss_change_ban',{target_user:u.id,ban_hours:Number(duration),reason:why,lift:false})}
- staffMsg('Ban action saved.');await renderStaff()}catch(e){staffMsg(e.message)}};row.append(ban)}box.append(row)}
+ staffMsg('Ban action saved.');await renderStaff()}catch(e){staffMsg(e.message)}};row.append(ban)}
+ if(role==='owner'&&u.id!==person?.id){
+  const current=staffData.messagingRestrictions.find(item=>item.id===u.id);
+  const restricted=current?.restricted===true;
+  if(restricted){
+   const flag=document.createElement('small');flag.className='ssc-messaging-restricted';
+   flag.textContent='🔇 Messaging restricted'+(current.reason?' · '+current.reason:'');
+   left.append(flag);
+  }
+  const toggle=document.createElement('button');toggle.className='ssc-light';
+  toggle.textContent=restricted?'🔊 Restore messaging':'🔇 Restrict messaging';
+  toggle.title=restricted?'Allow this account to send messages again':'Prevent outgoing DMs, study-room posts, and deck sharing';
+  toggle.onclick=async()=>{
+   let reason='';
+   if(!restricted){
+    const answer=prompt('Reason for restricting @'+u.username+' from sending messages (3–300 characters):');
+    if(answer===null)return;
+    reason=answer.trim();
+    if(reason.length<3||reason.length>300)return staffMsg('Enter a reason between 3 and 300 characters.');
+   }
+   const question=restricted
+    ? 'Restore messaging for @'+u.username+'? They will be able to send messages and post in study rooms again.'
+    : 'Restrict messaging for @'+u.username+'? They can still read conversations, but cannot send messages, post to study rooms, or share decks.';
+   if(!confirm(question))return;
+   toggle.disabled=true;
+   try{
+    await rpc('ss_owner_set_messaging_restriction',{target_user:u.id,restricted:!restricted,reason});
+    await renderStaff();
+    staffMsg('Messaging '+(restricted?'restored':'restricted')+' for @'+u.username+'.');
+   }catch(e){staffMsg('Could not change messaging restriction: '+(e?.message||e));toggle.disabled=false;}
+  };
+  row.append(toggle);
+ }
+ box.append(row)}
 
  const reportsBox=$('ssCloudStaffReports');reportsBox.replaceChildren();
  for(const r of reports.filter(x=>x.status==='open')){
@@ -901,7 +934,8 @@ function addStyling(){const style=document.createElement('style');style.textCont
  #ssCloudStaffDialog .ssc-admin-section{margin:16px 0 22px;border-top:1px solid #34435c;padding-top:10px}
  #ssCloudStaffDialog .ssc-admin-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
  #ssCloudStaffDialog .ssc-admin-tools input,#ssCloudStaffDialog .ssc-admin-tools select{min-width:150px;flex:1;background:#0c1524;color:#fff;border:1px solid #486080;border-radius:9px;padding:10px;font:inherit}
- #ssCloudStaffDialog .ssc-user[hidden]{display:none!important}#ssCloudStaffDialog .ssc-title-row{align-items:center}
+ #ssCloudStaffDialog .ssc-user[hidden]{display:none!important}
+ #ssCloudStaffDialog .ssc-messaging-restricted{color:#ffc68c;font-weight:700}#ssCloudStaffDialog .ssc-title-row{align-items:center}
  #ssCloudReportViewer{position:fixed;inset:0;z-index:100001;background:#080e19f5;display:flex;justify-content:center;align-items:flex-start;padding:5vh 14px 30px;overflow:auto;color:#edf2ff;font:14px/1.55 system-ui,sans-serif}
  #ssCloudReportViewer .ssc-report-review-panel{width:min(100%,720px);border:1px solid #4c5679;border-radius:17px;padding:24px;background:#151e30;box-shadow:0 25px 70px #000a}
  #ssCloudReportViewer .ssc-report-review-head{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;border-bottom:1px solid #34415c;padding-bottom:13px}
