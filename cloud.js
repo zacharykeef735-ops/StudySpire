@@ -733,7 +733,7 @@ function openStaffReport(report,kind){
   img.alt='Reported profile picture as submitted';dialog.append(img);
  }
  const hint=document.createElement('p');hint.className='ssc-muted';
- hint.textContent='Closing this window leaves the report open. It disappears from the inbox only after a decision, which is saved in Owner history.';
+ hint.textContent='Closing this window leaves the report open. It disappears from the inbox only after a decision, which is saved in staff report history.';
  dialog.append(hint);
  const status=document.createElement('p');status.className='ssc-report-review-status';status.setAttribute('role','status');dialog.append(status);
  const actions=document.createElement('div');actions.className='ssc-report-review-actions';
