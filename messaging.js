@@ -225,7 +225,7 @@ async function refresh(silent=false){
   messagingRestricted=restriction?.restricted===true;
   messagingRestrictionReason=messagingRestricted?String(restriction?.reason||''):'';
   setEnabled(true);renderOverview();if(selected)await loadThread();lastFetch=Date.now();
-  if(messagingRestricted&&(!silent||!wasRestricted))status('🔇 An Owner restricted outgoing messages and study-room posts'+(messagingRestrictionReason?': '+messagingRestrictionReason:'.')+' You can still read your conversations.','error');
+  if(messagingRestricted&&(!silent||!wasRestricted))status('🔇 Study Spire staff restricted outgoing messages and study-room posts'+(messagingRestrictionReason?': '+messagingRestrictionReason:'.')+' You can still read your conversations.','error');
   else if(!silent)status('☁ Messaging synced. Conversations are private to accepted friends.','good');
   else if(wasRestricted)status('🔊 Your messaging access has been restored.','good');
  }catch(error){status('Messaging could not sync: '+errorText(error),'error')}
