@@ -7,6 +7,7 @@ Open **◷ Study Planner** from the sidebar or top bar. It works in the browser 
 - Add assignments/exams with a deadline, subject, estimated minutes, and priority.
 - See a suggested two-hour study block list, automatically ordered by urgency and priority.
 - Create question-and-answer review topics. **Again / Good / Easy** schedules the next review.
+- Import copies of existing Assignments, quick tasks, and flashcards into the new planner. Imports are one-time copies, not live synchronization.
 - Track completed tasks, review actions, and seven-day study activity.
 - Download tasks as CSV, deadlines as an iCalendar file, or a full JSON backup; import a saved JSON backup.
 - The planner is account-scoped in browser storage. **It is not cloud synchronized**. Export backups before clearing browser data.
