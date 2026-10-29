@@ -100,12 +100,7 @@ StudySpire combines study and productivity features in a dark-themed browser int
 
 You can use browser-local study features without creating a cloud account. A StudySpire cloud account adds username/password sign-in, personal cloud study storage, and access to the appropriate dashboard for a user's role.
 
-**Two distinct kinds of accounts exist:**
-
-- **Cloud accounts:** Supabase-backed identities. New accounts use a username and password without an email address. Each account has its own study data and server-assigned permissions.
-- **Older email accounts:** Existing Supabase email/password accounts remain available through the **Older email account** sign-in option.
-  
-An older browser-local demo administrator is **not** the same as a Supabase Cloud Owner.
+**Cloud sign-in uses username and password only.** New accounts require no email. Study data and roles remain server-scoped. Browser-local demo accounts are separate from Cloud accounts, and a local demo administrator is not a Supabase Cloud Owner.
 
 ### The StudySpire home dashboard
 
@@ -198,9 +193,7 @@ StudySpire remembers up to eight **usernames only** on this browser. Choose a re
 
 While signed into a **username account**, open **Manage account → Change my password**. Enter the current password, a different new password (at least ten characters, 72 bytes maximum), and confirmation. The password change is checked securely on the server; incorrect attempts are rate-limited, and other devices must sign in again after a successful change.
 
-Older **email accounts** continue to use Supabase's normal email/password features. The username-password change panel is intended for username accounts only.
-
-Older email-based users can select **Older email account** and use their existing credentials. Creating a new username account does not automatically merge it with an older email account.
+**The older email-account sign-in option has been removed.** Existing database records were not deleted. The sign-in and password-reset screens now support username accounts only.
 
 ### Move study content between accounts
 
