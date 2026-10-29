@@ -1,5 +1,23 @@
 # StudySpire 📚
 
+## Smart Study Planner (October 2026)
+
+Open **◷ Study Planner** from the sidebar or top bar. It works in the browser with no extra API, token, subscription, or database migration.
+
+- Add assignments/exams with a deadline, subject, estimated minutes, and priority.
+- See a suggested two-hour study block list, automatically ordered by urgency and priority.
+- Create question-and-answer review topics. **Again / Good / Easy** schedules the next review.
+- Track completed tasks, review actions, and seven-day study activity.
+- Download tasks as CSV, deadlines as an iCalendar file, or a full JSON backup; import a saved JSON backup.
+- The planner is account-scoped in browser storage. **It is not cloud synchronized**. Export backups before clearing browser data.
+
+This personal version intentionally contains **no school/organization administration, classroom rosters, submissions, or teacher gradebook**. Those are exclusively part of [StudySpire1](https://github.com/zacharykeef735-ops/StudySpire1).
+
+Smoke test: run node --test tests/studyspire-planner.test.cjs.
+
+---
+
+
 **A browser-based study workspace with personal study tools, optional Supabase cloud accounts, role-based moderation, and an experimental on-device AI assistant.**
 
 StudySpire is a static web application: the main interface lives in `index.html`, with account and cloud features in `cloud.js`. It can be hosted using GitHub Pages without running a custom web server. Supabase provides cloud authentication, study-data synchronization, moderation, and password recovery.
